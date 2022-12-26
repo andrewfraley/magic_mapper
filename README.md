@@ -41,6 +41,8 @@ ssh root@yourtvIP
 chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 ```
 
+Next, reboot the TV (recommended to use the HomeBrew app to reboot to avoid crash detection issues, launch HomeBrew app, click cog, click reboot link on bottom left.)
+
 ## Configuring buttons
 
 Buttons are configured via the magic_mapper_config.json file.  magic_mapper_config.json contains a json formatted dictionary where each primary key is the name of the button to map (see the Button List below).  Note that changes to magic_mapper_config.json require you to restart the script, so just reboot your TV or if testing over SSH, kill the magic_mapper.py process and run the script manually.  To reboot your TV, it's recommended that you use the Home Brew app to do it to avoid Home Brew errors (the script won't start if Home Brew crash detection kicks in).  To reboot with Home Brew, open the Home Brew app, click the cog icon, then click the reboot link on the bottom left.
