@@ -16,14 +16,14 @@ The script has support to do the the following (default config button):
 
 - LG C9 - Fully tested on FW 05.30.25
 - LG CX - Not tested, but should work.
-- LG CX - Not tested, but should work.
+- LG C1 - Not tested, but should work.
 - LG C2 - Fully tested
 
 ## Installation / Setup
 
 - Root your TV using https://rootmy.tv/ and install the Home Brew app
   - Note the above link is likely to fail on the newest firmware.
-  - Instead, follow this guide (C2 has issues, see next bullet): https://github.com/RootMyTV/RootMyTV.github.io/issues/85#issuecomment-1295058979
+  - Instead, follow this guide (C2 and probably C1 have issues, see next bullet): https://github.com/RootMyTV/RootMyTV.github.io/issues/85#issuecomment-1295058979
   - The above instructions work fine for a C9, but a C2 requires additional steps for SSH to work, [outlined here](https://github.com/RootMyTV/RootMyTV.github.io/issues/85#issuecomment-1364765232):
 - Once your TV is rooted, copy the scripts over (or just vi the files and copy and paste).
   - start_mapper should be placed at /var/lib/webosbrew/init.d/start_magic_mapper
