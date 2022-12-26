@@ -41,7 +41,7 @@ ssh root@yourtvIP
 chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 ```
 
-Next, reboot the TV (recommended to use the HomeBrew app to reboot to avoid crash detection issues, launch HomeBrew app, click cog, click reboot link on bottom left.)
+- Lastly, reboot the TV (recommended to use the HomeBrew app to reboot to avoid crash detection issues, launch HomeBrew app, click cog, click reboot link on bottom left.)
 
 ## Configuring buttons
 
