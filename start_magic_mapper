@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Place at /var/lib/webosbrew/init.d/start_magic_mapper
+# run chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
+# Note the homebrew script that executes this won't work if you add an extension like .sh,
+# so be sure to leave off the extension
+
+
+if [ -f "/usr/bin/python" ]; then
+  /usr/bin/python /home/root/magic_mapper.py
+else
+  /usr/bin/python3 /home/root/magic_mapper.py
+fi

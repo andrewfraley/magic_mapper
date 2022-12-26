@@ -1,0 +1,29 @@
+{
+  "yellow": {
+    "function": "cycle_energy_mode"
+  },
+  "blue": {
+    "function": "toggle_eye_comfort",
+    "inputs": {
+      "notifications": false
+    }
+  },
+  "red": {
+    "function": "reduce_oled_light",
+    "inputs": {
+      "backlight_increment": 10
+    }
+  },
+  "green": {
+    "function": "increase_oled_light",
+    "inputs": {
+      "backlight_increment": 10
+    }
+  },
+  "prime": {
+    "function": "launch_app",
+    "inputs": {
+      "app_id": "cdp-30"
+    }
+  }
+}
