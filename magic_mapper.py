@@ -119,9 +119,15 @@ def cycle_energy_mode(inputs):
     if inputs.get('reverse_order'):
         modes.reverse()
     current_mode = get_picture_settings()["settings"]["energySaving"]
-    next_mode = modes.index(current_mode) + 1
+
+    if current_mode in modes:
+        next_mode = modes.index(current_mode) + 1
+    else:  # It's probably in auto mode so just start at the first mode
+        next_mode = 0
+
     if next_mode >= len(modes):
         next_mode = 0
+
     inputs['mode'] = modes[next_mode]
     set_energy_mode(inputs)
 
