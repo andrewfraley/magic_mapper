@@ -229,3 +229,8 @@ For documentation on each endpoint, see the WebOS developer docs: https://www.we
 
 
 If you add new novel functionality that others might make use of, please submit a PR!
+
+
+## Donations
+
+If you love this script and want to donate to support it, donate your money somewhere else!  If you don't have a charity in mind, food banks are always in dire need of your support, consider donating to your local regional food bank.
