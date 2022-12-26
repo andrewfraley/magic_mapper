@@ -1,33 +1,39 @@
 # Magic Mapper
 
 ## Summary
-Magic Mapper is a script that will let you remap unused buttons on the LG Magic Remote.  The script itself runs on your rooted LG TV, detects button presses, and allows you to control anything available via the [luna-send api](https://www.webosose.org/docs/tools/commands/luna-send/).
+Magic Mapper is a script that will let you remap unused buttons on the LG Magic Remote.  The script itself runs on your rooted LG TV, detects button presses, and allows you to control anything available via the [luna-send api](https://www.webosose.org/docs/tools/commands/luna-send/).  Note your TV must be rooted to use this.
 
-## Examples
-The script has examples that by default allow the following:
-- Red button: decrease the OLED light
-- Green button: increase the OLED light
-- Yellow button: Cycle the energy savings modes
-- Blue: Toggle the Eye Comfort Mode (also known as Reduce Blue Light)
+## Currently Supported Functions
+
+The script has support to do the the following (default config button):
+- Decrease the OLED light (red button)
+- Increase the OLED light (green button)
+- Cycle the energy savings modes (yellow button)
+- Toggle the Eye Comfort Mode (also known as Reduce Blue Light) (blue button)
+- Launch an app (not configured by default)
 
 ## TV Models supported
-- LG C9 - Fully tested
+
+- LG C9 - Fully tested on FW 05.30.25
 - LG CX - Not tested, but should work.  Likely needs the C9 startup script.
 - LG CX - Not tested, but should work.  Likely needs the C2 startup script.
 - LG C2 - Fully tested
 
 ## Installation / Setup
 
-- Root your TV using https://rootmy.tv/
+- Root your TV using https://rootmy.tv/ and install the Home Brew app
   - Note the above link is likely to fail on the newest firmware.
   - Instead, follow this guide (C2 has issues, see next bullet): https://github.com/RootMyTV/RootMyTV.github.io/issues/85#issuecomment-1295058979
   - The above instructions work fine for a C9, but a C2 requires additional steps for SSH to work, [outlined here](https://github.com/RootMyTV/RootMyTV.github.io/issues/85#issuecomment-1364765232):
 - Once your TV is rooted, copy the scripts over (or just vi the files and copy and paste).
   - start_mapper should be placed at /var/lib/webosbrew/init.d/start_magic_mapper
+    - you also need to do ```chmod +x /var/lib/webosbrew/init.d/start_magic_mapper```
   - magic_mapper.py should be placed at /home/root/magic_mapper.py
 ```
-scp start_magic_mapper-c2 root@yourtvIP:/var/lib/webosbrew/init.d/start_magic_mapper
-scp magic_mapper.py:/home/root/
+scp start_magic_mapper root@yourtvIP:/var/lib/webosbrew/init.d/start_magic_mapper
+scp magic_mapper.py:/home/root/magic_mapper.py
+ssh root@yourtvIP
+chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 ```
 
 ## Configuring buttons
@@ -80,7 +86,7 @@ If you want to remap the app buttons, you must first uninstall the app you don't
         "reverse_order": false,
         "notifications": true
       }
-    },
+    }
     ```
 
 ### toggle_eye_comfort
@@ -95,7 +101,7 @@ If you want to remap the app buttons, you must first uninstall the app you don't
     "inputs": {
       "notifications": false
     }
-  },
+  }
   ```
 
 ### reduce_oled_light / increase_oled_light
@@ -109,7 +115,38 @@ If you want to remap the app buttons, you must first uninstall the app you don't
     "inputs": {
       "backlight_increment": 10
     }
-  },
+  }
+  ```
+
+### set_energy_mode
+- Set a specific energy savings mode
+- Inputs:
+  - **mode** (string, default: none, values: "off", "min", "med", "max", "auto")
+  - **notifications** (boolean, default: false): Show a toast notification on change
+- Example:
+  ```
+  "green": {
+    "function": "set_energy_mode",
+    "inputs": {
+      "mode": "auto",
+      "notifications": true
+    }
+  }
+  ```
+### set_oled_light
+- Set the OLED backlight to a specific value
+- Inputs:
+  - **backlight** (integer, default: none, values: 0-100): The backlight value to set
+  - **notifications** (boolean, default: false): Show a toast notification on change
+- Example:
+  ```
+  "3": {
+    "function": "set_oled_backlight",
+    "inputs": {
+      "backlight": 50,
+      "notifications": true
+    }
+  }
   ```
 
 ### launch_app
@@ -118,7 +155,7 @@ If you want to remap the app buttons, you must first uninstall the app you don't
   - **app_id** (string, default: none): The app id to launch.  To get a list of all app IDs, copy the included list_apps.py script to the TV and run it (```python list_apps.py``` on C9/CX, ```python3 list_apps.py``` on C1/C2+)
 - Example:
   ```
-  "red": {
+  "1": {
     "function": "launch_app",
     "inputs": {
       "app_id": "netflix"
@@ -171,22 +208,9 @@ The function names supplied in magic_mapper_config.json map to the function name
 }
 ```
 
-If you add new novel functionality that others might make use of, please submit a PR!
-
 There are some various examples of the luna-send endpoints and payloads here (scroll down a bit):  https://gist.github.com/Ircama/1f29c2d2def75da6604756a3c91a8ab4
 
 For documentation on each endpoint, see the WebOS developer docs: https://www.webosose.org/docs/reference/ls2-api/ls2-api-index/
 
 
-SETTINGS = {
-    "show_notifications": True,  # Will present "toast" notification dialogs on some settings changes like eye comfort and energy mode
-    "backlight_increment": 10,  # For each button press, how much to raise or lower the brightness
-    "input_device": ,  # You shouldn't need to change this unless newer hardware in the future moves the input device used for the remote
-}
-
-FUNCTION_MAP = {
-    "yellow": "cycle_energy_mode",  # cycles the energy savings modes
-    "blue": "toggle_eye_comfort",  # aka reduce blue light
-    "red": "reduce_oled_light",
-    "green": "increase_oled_light",
-}
+If you add new novel functionality that others might make use of, please submit a PR!

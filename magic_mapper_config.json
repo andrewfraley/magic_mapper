@@ -24,7 +24,13 @@
       "backlight_increment": 10
     }
   },
-  "EXAMPLE - replace this text with the word prime to have the prime button launch plex": {
+  "1-example remove all but the 1 to assign to button 1": {
+    "function": "launch_app",
+    "inputs": {
+      "app_id": "netflix"
+    }
+  },
+  "EXAMPLE - replace this text with the button name 'prime' to have the prime button launch plex": {
     "function": "launch_app",
     "inputs": {
       "app_id": "cdp-30"

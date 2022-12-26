@@ -1,4 +1,5 @@
 import time
+import os
 import struct
 import subprocess
 import json
@@ -80,7 +81,8 @@ def input_loop(input_device, button_map):
 
 def get_button_map():
     """ Read the json config file """
-    with open('magic_mapper_config.json') as config_file:
+    config_path = os.path.join(os.path.dirname(__file__), 'magic_mapper_config.json')
+    with open(config_path) as config_file:
         button_map = json.load(config_file)
     return button_map
 
@@ -170,9 +172,17 @@ def increment_oled_light(inputs, direction):
         if new_value < 0:
             new_value = 0
 
+    inputs['backlight'] = new_value
+    set_oled_backlight(inputs)
+
+
+def set_oled_backlight(inputs):
+    backlight = inputs['backlight']
     endpoint = "luna://com.webos.settingsservice/setSystemSettings"
-    payload = {"category": "picture", "settings": {"backlight": new_value}}
+    payload = {"category": "picture", "settings": {"backlight": backlight}}
     luna_send(endpoint, payload)
+    if inputs.get('notifications'):
+        show_message("OLED Backlight: %s" % backlight)
 
 
 def get_picture_settings():
