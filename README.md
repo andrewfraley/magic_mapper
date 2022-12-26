@@ -168,7 +168,7 @@ If you want to remap the app buttons, you must first uninstall the app you don't
 
 ## Button List
 
-List of known buttons and their codes.  Not all remote buttons are on this list, but the missing ones are likely buttons where the default behavior can't be disabled.  If needed, you can modify magic_mapper.py to add other button codes.  Just run magic_mapper.py manually and it will list all button codes it sees.
+List of known buttons and their codes.  Not all remote buttons are on this list, but the missing ones are likely buttons where the default behavior can't be disabled.  If needed, you can modify magic_mapper.py to add other button codes.  Just run magic_mapper.py manually and it will list all button codes it sees.  TODO: Add the extra buttons for the C2 remote.
 
 Note that long presses (longer than 1s) are ignored.  I will eventually add support for different actions based on short vs long press.
 
