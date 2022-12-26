@@ -15,13 +15,13 @@
   "red": {
     "function": "reduce_oled_light",
     "inputs": {
-      "backlight_increment": 10
+      "increment": 10
     }
   },
   "green": {
     "function": "increase_oled_light",
     "inputs": {
-      "backlight_increment": 10
+      "increment": 10
     }
   },
   "1-example remove all but the 1 to assign to button 1": {

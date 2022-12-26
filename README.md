@@ -113,7 +113,7 @@ If you want to remap the app buttons, you must first uninstall the app you don't
   "red": {
     "function": "reduce_oled_light",
     "inputs": {
-      "backlight_increment": 10
+      "increment": 10
     }
   }
   ```
