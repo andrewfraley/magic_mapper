@@ -1,6 +1,10 @@
 {
   "yellow": {
-    "function": "cycle_energy_mode"
+    "function": "cycle_energy_mode",
+    "inputs": {
+      "reverse_order": false,
+      "notifications": true
+    }
   },
   "blue": {
     "function": "toggle_eye_comfort",
@@ -20,7 +24,7 @@
       "backlight_increment": 10
     }
   },
-  "prime": {
+  "EXAMPLE - replace this text with the word prime to have the prime button launch plex": {
     "function": "launch_app",
     "inputs": {
       "app_id": "cdp-30"

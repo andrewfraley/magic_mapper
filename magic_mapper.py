@@ -3,21 +3,6 @@ import struct
 import subprocess
 import json
 
-# import logging
-
-SETTINGS = {
-    "show_notifications": True,  # Will present "toast" notification dialogs on some settings changes like eye comfort and energy mode
-    "backlight_increment": 10,  # For each button press, how much to raise or lower the brightness
-    "input_device": "/dev/input/event3",  # You shouldn't need to change this unless newer hardware in the future moves the input device used for the remote
-}
-
-FUNCTION_MAP = {
-    "yellow": "cycle_energy_mode",  # cycles the energy savings modes
-    "blue": "toggle_eye_comfort",  # aka reduce blue light
-    "red": "reduce_oled_light",
-    "green": "increase_oled_light",
-}
-
 BUTTONS = {
     398: "red",
     399: "green",
@@ -45,19 +30,21 @@ BUTTONS = {
 def main():
     """MAIN"""
 
-    infile_path = SETTINGS["input_device"]
-    FORMAT = "llHHI"
-    EVENT_SIZE = struct.calcsize(FORMAT)
+    button_map = get_button_map()
+    input_loop(input_device="/dev/input/event3", button_map=button_map)
 
+
+def input_loop(input_device, button_map):
+    infile_path = input_device
+    input_format = "llHHI"
+    event_size = struct.calcsize(input_format)
     in_file = open(infile_path, "rb")
-
-    event = in_file.read(EVENT_SIZE)
+    event = in_file.read(event_size)
 
     code_wait = None  # Are we waiting for button up
     code_wait_start = None
     while event:
-        (tv_sec, tv_usec, type, code, value) = struct.unpack(FORMAT, event)
-
+        (tv_sec, tv_usec, type, code, value) = struct.unpack(input_format, event)
         if code in BUTTONS:
 
             print("button code: %s" % code)
@@ -81,27 +68,36 @@ def main():
 
                 if button_hold_duration < 1.0:
                     print("%s button up" % BUTTONS[code])
-                    fire_event(code)
+                    fire_event(code, button_map)
                 else:
                     print("Ignoring long press of %s" % BUTTONS[code])
-
-        event = in_file.read(EVENT_SIZE)
+        elif code:
+            print('Unknown button pressed. (code=%s)' % code)
+        event = in_file.read(event_size)
 
     in_file.close()
 
 
-def fire_event(code):
+def get_button_map():
+    """ Read the json config file """
+    with open('magic_mapper_config.json') as config_file:
+        button_map = json.load(config_file)
+    return button_map
+
+
+def fire_event(code, button_map):
     print("firing event for code: %s" % code)
     button_name = BUTTONS[code]
     print("button_name: %s" % button_name)
 
-    if button_name not in FUNCTION_MAP:
-        print("Button %s not in FUNCTION_MAP" % button_name)
+    if button_name not in button_map:
+        print("Button %s not configured in magic_mapper_config.json " % button_name)
         return
 
-    func_name = FUNCTION_MAP[button_name]
+    func_name = button_map[button_name]['function']
     print("func_name: %s" % func_name)
-    globals()[func_name]()
+    inputs = button_map[button_name].get('inputs', {})
+    globals()[func_name](inputs)
 
 
 def luna_send(endpoint, payload):
@@ -115,17 +111,20 @@ def luna_send(endpoint, payload):
     return output
 
 
-def cycle_energy_mode():
+def cycle_energy_mode(inputs):
     # cycle energy modes between min med max off
     modes = ["max", "med", "min", "off"]
+    if inputs.get('reverse_order'):
+        modes.reverse()
     current_mode = get_picture_settings()["settings"]["energySaving"]
     next_mode = modes.index(current_mode) + 1
     if next_mode >= len(modes):
         next_mode = 0
-    set_energy_mode(modes[next_mode])
+    inputs['mode'] = modes[next_mode]
+    set_energy_mode(inputs)
 
 
-def toggle_eye_comfort():
+def toggle_eye_comfort(inputs):
     """Toggle the eye comfort mode aka reduce blue light"""
     current_mode = get_picture_settings()["settings"]["eyeComfortMode"]
     print("current eye comfort mode: current_mode %s" % current_mode)
@@ -136,34 +135,37 @@ def toggle_eye_comfort():
     endpoint = "luna://com.webos.settingsservice/setSystemSettings"
     payload = {"category": "picture", "settings": {"eyeComfortMode": new_mode}}
     luna_send(endpoint, payload)
-    show_message("Reduce blue light mode: %s" % new_mode)
+    if inputs.get('notifications'):
+        show_message("Reduce blue light mode: %s" % new_mode)
 
 
-def set_energy_mode(mode):
+def set_energy_mode(inputs):
     """Sets the energy savings mode"""
+    mode = inputs['mode']
     endpoint = "luna://com.webos.settingsservice/setSystemSettings"
     payload = {"category": "picture", "settings": {"energySaving": mode}}
     luna_send(endpoint, payload)
-    show_message("Energy mode: %s" % mode)
+    if inputs.get('notifications'):
+        show_message("Energy mode: %s" % mode)
 
 
-def increase_oled_light():
-    increment_oled_light('up')
+def increase_oled_light(inputs):
+    increment_oled_light(inputs, direction='up')
 
 
-def reduce_oled_light():
-    increment_oled_light('down')
+def reduce_oled_light(inputs):
+    increment_oled_light(inputs, direction='down')
 
 
-def increment_oled_light(up_or_down):
-    increment = int(SETTINGS['backlight_increment'])
+def increment_oled_light(inputs, direction):
+    increment = inputs.get('increment', 10)
     current_value = get_picture_settings()["settings"]["backlight"]
 
-    if up_or_down == 'up':
+    if direction == 'up':
         new_value = current_value + increment
         if new_value > 100:
             new_value = 100
-    elif up_or_down == "down":
+    elif direction == "down":
         new_value = current_value - increment
         if new_value < 0:
             new_value = 0
@@ -184,11 +186,9 @@ def get_picture_settings():
 
 def show_message(message):
     """Shows a "toast" message"""
-
-    if SETTINGS["show_notifications"]:
-        endpoint = "luna://com.webos.notification/createToast"
-        payload = {"message": message}
-        luna_send(endpoint, payload)
+    endpoint = "luna://com.webos.notification/createToast"
+    payload = {"message": message}
+    luna_send(endpoint, payload)
 
 
 if __name__ == "__main__":
