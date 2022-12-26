@@ -192,6 +192,12 @@ BUTTONS = {
 }
 ```
 
+## Help!
+
+If you need assistance, please open an issue on Github here: https://github.com/andrewfraley/magic_mapper/issues
+
+You can view all issues (closed and still open) here: https://github.com/andrewfraley/magic_mapper/issues?q=is%3Aissue
+
 ## Modifying the script
 
 The script is currently setup to detect the button presses of the commonly unused buttons.  Namely the 0-9 buttons and the color buttons.  You can remap other buttons, but be aware this script does not prevent the actions a button normally takes.  For example, you could override the channel +/- buttons, but some internal apps use these buttons.  So if you press one, it will execute the default behavior in addition to the remapped behavior via this script.
