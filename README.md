@@ -15,8 +15,8 @@ The script has support to do the the following (default config button):
 ## TV Models supported
 
 - LG C9 - Fully tested on FW 05.30.25
-- LG CX - Not tested, but should work.  Likely needs the C9 startup script.
-- LG CX - Not tested, but should work.  Likely needs the C2 startup script.
+- LG CX - Not tested, but should work.
+- LG CX - Not tested, but should work.
 - LG C2 - Fully tested
 
 ## Installation / Setup
