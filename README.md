@@ -32,9 +32,11 @@ The script has support to do the the following (default config button):
   - start_mapper should be placed at /var/lib/webosbrew/init.d/start_magic_mapper
     - you also need to do ```chmod +x /var/lib/webosbrew/init.d/start_magic_mapper```
   - magic_mapper.py should be placed at /home/root/magic_mapper.py
+  - magic_mapper_config.json should be placed at /home/root/magic_mapper_config.json
 ```
 scp start_magic_mapper root@yourtvIP:/var/lib/webosbrew/init.d/start_magic_mapper
-scp magic_mapper.py:/home/root/magic_mapper.py
+scp magic_mapper.py root@yourTvIP:/home/root/magic_mapper.py
+scp magic_mapper_config.json root@yourTvIP:/home/root/magic_mapper_config.json
 ssh root@yourtvIP
 chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 ```
