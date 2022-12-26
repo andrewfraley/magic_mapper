@@ -8,9 +8,12 @@ Magic Mapper is a script that will let you remap unused buttons on the LG Magic 
 The script has support to do the the following (default config button):
 - Decrease the OLED light (red button)
 - Increase the OLED light (green button)
+- Set a specific OLED light value (not configured by default)
 - Cycle the energy savings modes (yellow button)
+- Set a specific energy savings mode (not configured by default)
 - Toggle the Eye Comfort Mode (also known as Reduce Blue Light) (blue button)
 - Launch an app (not configured by default)
+
 
 ## TV Models supported
 
