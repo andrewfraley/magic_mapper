@@ -183,7 +183,7 @@ If you want to remap the app buttons, you must first uninstall the app you don't
 - Send an IR command to a device configured by the TV's Device Connector
 - Inputs:
     - tv_input (string, default: none): The input the device is on, ie "optical" or "hdmi3" (TODO: full list unknown)
-    - keycode (string, default: none): The IR keycode to send "IR_KEY_VOLUP", "IR_KEY_POWER" (TODO: full list unknown)
+    - keycode (string, default: none): The IR keycode to send, ie "IR_KEY_POWER"
     - device_type (string, default: none) ie "audio" (TODO: full list unknown)
 - Example:
   ```
@@ -196,6 +196,15 @@ If you want to remap the app buttons, you must first uninstall the app you don't
     }
   },
   ```
+- Known keycodes
+    - Device type "audio"
+      - "IR_KEY_POWER"
+      - "IR_KEY_VOLUP"
+      - "IR_KEY_VOLDOWN"
+      - "IR_KEY_AINFO"
+      - "IR_KEY_INPUT"
+      - "IR_KEY_REW"
+      - "IR_KEY_FF"
 
 ## Button List
 
