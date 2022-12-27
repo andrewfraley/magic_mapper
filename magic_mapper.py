@@ -52,10 +52,10 @@ def input_loop(input_device, button_map):
         (tv_sec, tv_usec, type, code, value) = struct.unpack(input_format, event)
         if code in BUTTONS:
 
-            print("button code: %s" % code)
-            print("button value: %s" % value)
-            print("code_wait: %s" % code_wait)
-            print("code_wait_start: %s" % code_wait_start)
+            # print("button code: %s" % code)
+            # print("button value: %s" % value)
+            # print("code_wait: %s" % code_wait)
+            # print("code_wait_start: %s" % code_wait_start)
 
             if not code_wait and value == 1:  # Start waiting for button up
                 print("%s button down" % BUTTONS[code])
@@ -66,7 +66,7 @@ def input_loop(input_device, button_map):
                 # We need to ignore long presses
                 now = time.time()
                 button_hold_duration = now - code_wait_start
-                print("button_hold_duration: %s" % button_hold_duration)
+                # print("button_hold_duration: %s" % button_hold_duration)
 
                 code_wait = None
                 code_wait_start = None
@@ -76,7 +76,7 @@ def input_loop(input_device, button_map):
                     fire_event(code, button_map)
                 else:
                     print("Ignoring long press of %s" % BUTTONS[code])
-        elif code:
+        elif code not in [0, 1] and value == 0:
             print("Unknown button pressed. (code=%s)" % code)
         event = in_file.read(event_size)
 
