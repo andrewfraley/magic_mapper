@@ -61,9 +61,11 @@ Buttons are configured via the magic_mapper_config.json file. magic_mapper_confi
 If you want to remap the app buttons, you must first uninstall the app you don't use (otherwise pressing the button will still launch that app, even with this script running). For example, if you wanted to replace the Amazon Prime button with Plex:
 
 -   Uninstall the Prime app.
--   Get the Plex app id. Copy the included list_apps.py script to the TV and run it with:
-    -   (C9/CX): `python list_apps.py`
-    -   (C1/C2+): `python3 list_apps.py`
+-   Get the Plex app id by copying the included list_apps.py script to the TV.
+    - ```wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/main/list_apps.py```
+    - Run it with:
+        -   (C9/CX): `python list_apps.py`
+        -   (C1/C2+): `python3 list_apps.py`
     -   This will list the app names followed by their app ID such as `Plex : cdp-30`, cdp-30 is the app id for Plex.
 -   Edit the magic_mapper_config.json file and add a new item like:
 
