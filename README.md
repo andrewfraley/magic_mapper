@@ -186,32 +186,30 @@ List of known buttons and their codes. Not all remote buttons are on this list, 
 Note that long presses (longer than 1s) are ignored. I will eventually add support for different actions based on short vs long press.
 
 ```
-BUTTONS = {
-    398: "red",
-    399: "green",
-    400: "yellow",
-    401: "blue",
-    402: "ch_up",
-    403: "ch_down",
-    207: "play",
-    119: "pause",
-    2: "1",
-    3: "2",
-    4: "3",
-    5: "4",
-    6: "5",
-    7: "6",
-    8: "7",
-    9: "8",
-    10: "9",
-    11: "0",
-    1038: "prime",
-    1037: "netflix",
-    1042: "disney",
-    1043: "lg_channels",
-    1086: "alexa",
-    1117: "google",
-}
+ "red"
+ "green"
+ "yellow"
+ "blue"
+ "ch_up"
+ "ch_down"
+ "play"
+ "pause"
+ "1"
+ "2"
+ "3"
+ "4"
+ "5"
+ "6"
+ "7"
+ "8"
+ "9"
+ "0"
+ "prime"
+ "netflix"
+ "disney"
+ "lg_channels"
+ "alexa"
+ "google"
 ```
 
 ## Help!
