@@ -24,7 +24,11 @@ BUTTONS = {
     10: "9",
     11: "0",
     1038: "prime",
-    1037: "netflix"
+    1037: "netflix",
+    1042: "disney",
+    1043: "lg_channels",
+    1086: "alexa",
+    1117: "google",
 }
 
 
@@ -73,15 +77,15 @@ def input_loop(input_device, button_map):
                 else:
                     print("Ignoring long press of %s" % BUTTONS[code])
         elif code:
-            print('Unknown button pressed. (code=%s)' % code)
+            print("Unknown button pressed. (code=%s)" % code)
         event = in_file.read(event_size)
 
     in_file.close()
 
 
 def get_button_map():
-    """ Read the json config file """
-    config_path = os.path.join(os.path.dirname(__file__), 'magic_mapper_config.json')
+    """Read the json config file"""
+    config_path = os.path.join(os.path.dirname(__file__), "magic_mapper_config.json")
     with open(config_path) as config_file:
         button_map = json.load(config_file)
     return button_map
@@ -96,9 +100,9 @@ def fire_event(code, button_map):
         print("Button %s not configured in magic_mapper_config.json " % button_name)
         return
 
-    func_name = button_map[button_name]['function']
+    func_name = button_map[button_name]["function"]
     print("func_name: %s" % func_name)
-    inputs = button_map[button_name].get('inputs', {})
+    inputs = button_map[button_name].get("inputs", {})
     globals()[func_name](inputs)
 
 
@@ -116,7 +120,7 @@ def luna_send(endpoint, payload):
 def cycle_energy_mode(inputs):
     # cycle energy modes between min med max off
     modes = ["max", "med", "min", "off"]
-    if inputs.get('reverse_order'):
+    if inputs.get("reverse_order"):
         modes.reverse()
     current_mode = get_picture_settings()["settings"]["energySaving"]
 
@@ -128,7 +132,7 @@ def cycle_energy_mode(inputs):
     if next_mode >= len(modes):
         next_mode = 0
 
-    inputs['mode'] = modes[next_mode]
+    inputs["mode"] = modes[next_mode]
     set_energy_mode(inputs)
 
 
@@ -143,33 +147,33 @@ def toggle_eye_comfort(inputs):
     endpoint = "luna://com.webos.settingsservice/setSystemSettings"
     payload = {"category": "picture", "settings": {"eyeComfortMode": new_mode}}
     luna_send(endpoint, payload)
-    if inputs.get('notifications'):
+    if inputs.get("notifications"):
         show_message("Reduce blue light mode: %s" % new_mode)
 
 
 def set_energy_mode(inputs):
     """Sets the energy savings mode"""
-    mode = inputs['mode']
+    mode = inputs["mode"]
     endpoint = "luna://com.webos.settingsservice/setSystemSettings"
     payload = {"category": "picture", "settings": {"energySaving": mode}}
     luna_send(endpoint, payload)
-    if inputs.get('notifications'):
+    if inputs.get("notifications"):
         show_message("Energy mode: %s" % mode)
 
 
 def increase_oled_light(inputs):
-    increment_oled_light(inputs, direction='up')
+    increment_oled_light(inputs, direction="up")
 
 
 def reduce_oled_light(inputs):
-    increment_oled_light(inputs, direction='down')
+    increment_oled_light(inputs, direction="down")
 
 
 def increment_oled_light(inputs, direction):
-    increment = inputs.get('increment', 10)
+    increment = inputs.get("increment", 10)
     current_value = get_picture_settings()["settings"]["backlight"]
 
-    if direction == 'up':
+    if direction == "up":
         new_value = current_value + increment
         if new_value > 100:
             new_value = 100
@@ -178,16 +182,16 @@ def increment_oled_light(inputs, direction):
         if new_value < 0:
             new_value = 0
 
-    inputs['backlight'] = new_value
+    inputs["backlight"] = new_value
     set_oled_backlight(inputs)
 
 
 def set_oled_backlight(inputs):
-    backlight = inputs['backlight']
+    backlight = inputs["backlight"]
     endpoint = "luna://com.webos.settingsservice/setSystemSettings"
     payload = {"category": "picture", "settings": {"backlight": backlight}}
     luna_send(endpoint, payload)
-    if inputs.get('notifications'):
+    if inputs.get("notifications"):
         show_message("OLED Backlight: %s" % backlight)
 
 
