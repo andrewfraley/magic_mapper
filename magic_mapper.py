@@ -152,7 +152,9 @@ def toggle_eye_comfort(inputs):
 
 
 def set_energy_mode(inputs):
-    """Sets the energy savings mode"""
+    """ Sets the energy savings mode
+        Valid values: min med max off auto screen_off
+    """
     mode = inputs["mode"]
     endpoint = "luna://com.webos.settingsservice/setSystemSettings"
     payload = {"category": "picture", "settings": {"energySaving": mode}}
