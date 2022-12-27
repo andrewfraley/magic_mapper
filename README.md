@@ -219,6 +219,8 @@ Note that long presses (longer than 1s) are ignored. I will eventually add suppo
  "blue"
  "ch_up"
  "ch_down"
+ "vol_up"
+ "vol_down"
  "play"
  "pause"
  "1"

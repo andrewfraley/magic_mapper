@@ -11,6 +11,8 @@ BUTTONS = {
     401: "blue",
     402: "ch_up",
     403: "ch_down",
+    115: "vol_up",
+    114: "vol_down",
     207: "play",
     119: "pause",
     2: "1",
@@ -222,7 +224,7 @@ def send_ir_command(inputs):
     keycode = inputs['keycode']  # "IR_KEY_VOLUP" "IR_KEY_POWER"
     device_type = inputs['device_type']  # "audio"
 
-    endpoint = "luna://com.webos.settingsservice/getSystemSettings"
+    endpoint = "luna://com.webos.service.irdbmanager/sendIrCommand"
     payload = {"keyCode": keycode, "buttonState": "single", "connectedInput": tv_input, "deviceType": device_type}
     luna_send(endpoint, payload)
 
