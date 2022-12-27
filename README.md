@@ -29,20 +29,16 @@ The script has support to do the the following (default config button):
     -   Note the above link is likely to fail on the newest firmware.
     -   Instead, follow this guide (C2 and probably C1 have issues, see next bullet): https://github.com/RootMyTV/RootMyTV.github.io/issues/85#issuecomment-1295058979
     -   The above instructions work fine for a C9, but a C2 requires additional steps for SSH to work, [outlined here](https://github.com/RootMyTV/RootMyTV.github.io/issues/85#issuecomment-1364765232):
--   Once your TV is rooted, copy the scripts over (or just vi the files and copy and paste).
-    -   start_mapper should be placed at /var/lib/webosbrew/init.d/start_magic_mapper
-        -   you also need to do `chmod +x /var/lib/webosbrew/init.d/start_magic_mapper`
-    -   magic_mapper.py should be placed at /home/root/magic_mapper.py
-    -   magic_mapper_config.json should be placed at /home/root/magic_mapper_config.json
-
+-   Once your TV is rooted, run the following to download the Magic Mapper scripts (or just vi the files and copy and paste, or just use scp on the C9/CX, but the C2 doesn't support scp).
 ```
-scp start_magic_mapper root@yourtvIP:/var/lib/webosbrew/init.d/start_magic_mapper
-scp magic_mapper.py root@yourTvIP:/home/root/magic_mapper.py
-scp magic_mapper_config.json root@yourTvIP:/home/root/magic_mapper_config.json
-ssh root@yourtvIP
+cd /home/root
+wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/main/magic_mapper.py
+wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/main/magic_mapper_config.json
+cd /var/lib/webosbrew/init.d
+wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/main/start_magic_mapper
 chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 ```
-
+- Edit magic_mapper_config.json as needed
 -   Lastly, reboot the TV (recommended to use the HomeBrew app to reboot to avoid crash detection issues, launch HomeBrew app, click cog, click reboot link on bottom left.)
 
 ## Configuring buttons

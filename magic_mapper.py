@@ -118,7 +118,7 @@ def luna_send(endpoint, payload):
 
 
 def cycle_energy_mode(inputs):
-    # cycle energy modes between min med max off
+    """ cycle energy modes between min med max off """
     modes = ["max", "med", "min", "off"]
     if inputs.get("reverse_order"):
         modes.reverse()
@@ -137,7 +137,7 @@ def cycle_energy_mode(inputs):
 
 
 def toggle_eye_comfort(inputs):
-    """Toggle the eye comfort mode aka reduce blue light"""
+    """ Toggle the eye comfort mode aka reduce blue light """
     current_mode = get_picture_settings()["settings"]["eyeComfortMode"]
     print("current eye comfort mode: current_mode %s" % current_mode)
     if current_mode == "off":
