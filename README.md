@@ -16,6 +16,7 @@ The script has support to do the the following (default config button):
 -   Turn the screen off (9 button - uses set_energy_mode)
 -   Toggle the Eye Comfort Mode (also known as Reduce Blue Light) (blue button)
 -   Launch an app (not configured by default)
+-   Send IR commands to a device configured by the Device Connector (ie have a shortcut key to toggle power on for an optical connected soundbar)
 
 ## TV Models supported
 
@@ -178,6 +179,23 @@ If you want to remap the app buttons, you must first uninstall the app you don't
       }
     }
     ```
+### send_ir_command
+- Send an IR command to a device configured by the TV's Device Connector
+- Inputs:
+    - tv_input (string, default: none): The input the device is on, ie "optical" or "hdmi3" (TODO: full list unknown)
+    - keycode (string, default: none): The IR keycode to send "IR_KEY_VOLUP", "IR_KEY_POWER" (TODO: full list unknown)
+    - device_type (string, default: none) ie "audio" (TODO: full list unknown)
+- Example:
+  ```
+  "0": {
+    "function": "send_ir_command",
+    "inputs": {
+      "tv_input": "optical",
+      "keycode": "IR_KEY_POWER",
+      "device_type": "audio"
+    }
+  },
+  ```
 
 ## Button List
 

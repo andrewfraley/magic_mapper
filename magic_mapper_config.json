@@ -31,6 +31,14 @@
       "notifications": false
     }
   },
+  "0": {
+    "function": "send_ir_command",
+    "inputs": {
+      "tv_input": "optical",
+      "keycode": "IR_KEY_POWER",
+      "device_type": "audio"
+    }
+  },
   "1-example remove all but the 1 to assign to button 1": {
     "function": "launch_app",
     "inputs": {

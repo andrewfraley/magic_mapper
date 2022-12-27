@@ -213,5 +213,19 @@ def show_message(message):
     luna_send(endpoint, payload)
 
 
+def send_ir_command(inputs):
+    """ Send an IR command to a configured device
+        This relies on you using the device connection manager to setup your IR device (ie a soundbar)
+        Once setup you can use this function to have the remote send IR commands
+    """
+    tv_input = inputs['tv_input']  # "OPTICAL", other inputs untested
+    keycode = inputs['keycode']  # "IR_KEY_VOLUP" "IR_KEY_POWER"
+    device_type = inputs['device_type']  # "audio"
+
+    endpoint = "luna://com.webos.settingsservice/getSystemSettings"
+    payload = {"keyCode": keycode, "buttonState": "single", "connectedInput": tv_input, "deviceType": device_type}
+    luna_send(endpoint, payload)
+
+
 if __name__ == "__main__":
     main()
