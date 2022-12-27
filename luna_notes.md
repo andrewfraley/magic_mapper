@@ -34,3 +34,8 @@ luna-send -n 1 luna://com.webos.service.irdbmanager/sendIrCommand -f '{"keyCode"
 luna-send -n 1 luna://com.webos.service.irdbmanager/sendIrCommand -f '{"keyCode":"IR_KEY_VOLUP","buttonState
 ":"single","connectedInput":"OPTICAL","deviceType":"audio"}'
 ```
+
+### Get possible IR code values
+```
+luna-send -n 1 luna://com.webos.service.irdbmanager/getKeyList -f '{"deviceType":"audio"}' | grep IR
+```
