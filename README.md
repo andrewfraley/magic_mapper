@@ -12,7 +12,8 @@ The script has support to do the the following (default config button):
 -   Increase the OLED light (green button)
 -   Set a specific OLED light value (not configured by default)
 -   Cycle the energy savings modes (yellow button)
--   Set a specific energy savings mode (not configured by default)
+-   Set a specific energy savings mode
+-   Turn the screen off (9 button - uses set_energy_mode)
 -   Toggle the Eye Comfort Mode (also known as Reduce Blue Light) (blue button)
 -   Launch an app (not configured by default)
 
@@ -129,8 +130,9 @@ If you want to remap the app buttons, you must first uninstall the app you don't
 ### set_energy_mode
 
 -   Set a specific energy savings mode
+    - note "screen_off" activates the screen off setting which turns off the screen until you push a button other than the power button.
 -   Inputs:
-    -   **mode** (string, default: none, values: "off", "min", "med", "max", "auto")
+    -   **mode** (string, default: none, values: "off", "min", "med", "max", "auto", "screen_off")
     -   **notifications** (boolean, default: false): Show a toast notification on change
 -   Example:
     ```

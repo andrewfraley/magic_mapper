@@ -24,6 +24,13 @@
       "increment": 10
     }
   },
+  "9": {
+    "function": "set_energy_mode",
+    "inputs": {
+      "mode": "screen_off",
+      "notifications": false
+    }
+  },
   "1-example remove all but the 1 to assign to button 1": {
     "function": "launch_app",
     "inputs": {
