@@ -272,3 +272,9 @@ If you add new novel functionality that others might make use of, please submit 
 ## Donations
 
 If you love this project and want to donate to support it, donate your money somewhere else! If you don't have a charity in mind, food banks are always in dire need of your support, consider donating to your local regional food bank.
+
+## TODO Items
+
+- Add an option to only execute a button config when the specified app is in focus
+- Add option to execute a set of commands on Power On (not just on full boot)
+- Add support for long vs short button presses (currently button presses longer than 1s are ignored)
