@@ -118,7 +118,7 @@ If you want to remap the app buttons, you must first uninstall the app you don't
 
 -   Increases / decreases the oled light setting
 -   Inputs:
-    -   **backlight_increment** (integer, default: 10): The amount to change the setting by
+    -   **increment** (integer, default: 10): The amount to change the setting by
 -   Example:
     ```
     "red": {
