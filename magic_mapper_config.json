@@ -25,11 +25,7 @@
     }
   },
   "9": {
-    "function": "set_energy_mode",
-    "inputs": {
-      "mode": "screen_off",
-      "notifications": false
-    }
+    "function": "screen_off"
   },
   "0-example remove all but the 0 to assign to button 0": {
     "function": "send_ir_command",

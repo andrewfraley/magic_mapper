@@ -13,7 +13,7 @@ The script has support to do the the following (default config button):
 -   Set a specific OLED light value (not configured by default)
 -   Cycle the energy savings modes (yellow button)
 -   Set a specific energy savings mode
--   Turn the screen off (9 button - uses set_energy_mode)
+-   Turn the screen off - press any button but power to turn it back on (9 button)
 -   Toggle the Eye Comfort Mode (also known as Reduce Blue Light) (blue button)
 -   Launch an app (not configured by default)
 -   Send IR commands to a device configured by the Device Connector (ie have a shortcut key to toggle power on for an optical connected soundbar)
@@ -131,10 +131,20 @@ If you want to remap the app buttons, you must first uninstall the app you don't
     }
     ```
 
+### screen_off
+- Turns the screen off but not the TV itself, press any button other than powe and vol to turn it back on
+- Inputs: None
+- Example:
+  ```
+  "9": {
+    "function": "screen_off"
+  }
+  ```
+
 ### set_energy_mode
 
 -   Set a specific energy savings mode
-    - note "screen_off" activates the screen off setting which turns off the screen until you push a button other than the power button.
+    - Note there was a report of "screen_off" not working on a CS model, so it's recommended to use the screen_off function instead
 -   Inputs:
     -   **mode** (string, default: none, values: "off", "min", "med", "max", "auto", "screen_off")
     -   **notifications** (boolean, default: false): Show a toast notification on change

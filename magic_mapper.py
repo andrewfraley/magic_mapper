@@ -153,9 +153,19 @@ def toggle_eye_comfort(inputs):
         show_message("Reduce blue light mode: %s" % new_mode)
 
 
+def screen_off(inputs):
+    """ Turns the screen off, but not the TV itself.
+        Press any button but power and vol to turn it back on.
+    """
+    endpoint = "luna://com.webos.service.tvpower/power/turnOffScreen"
+    payload = {}
+    luna_send(endpoint, payload)
+
+
 def set_energy_mode(inputs):
     """ Sets the energy savings mode
         Valid values: min med max off auto screen_off
+        screen_off may not work on some models, best to use the screen_off function instead
     """
     mode = inputs["mode"]
     endpoint = "luna://com.webos.settingsservice/setSystemSettings"
