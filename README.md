@@ -33,6 +33,7 @@ The script has support to do the the following (default config button):
     -   Instead, follow this guide (C2 and probably C1 have issues, see next bullet): https://github.com/RootMyTV/RootMyTV.github.io/issues/85#issuecomment-1295058979
     -   The above instructions work fine for a C9, but a C2 requires additional steps for SSH to work, [outlined here](https://github.com/RootMyTV/RootMyTV.github.io/issues/85#issuecomment-1364765232):
 -   Once your TV is rooted, run the following to download the Magic Mapper scripts (or just vi the files and copy and paste, or just use scp on the C9/CX, but the C2 doesn't support scp).
+
 ```
 cd /home/root
 wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/main/magic_mapper.py
@@ -41,7 +42,8 @@ cd /var/lib/webosbrew/init.d
 wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/main/start_magic_mapper
 chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 ```
-- Edit magic_mapper_config.json as needed
+
+-   Edit magic_mapper_config.json as needed
 -   Lastly, reboot the TV (recommended to use the HomeBrew app to reboot to avoid crash detection issues, launch HomeBrew app, click cog, click reboot link on bottom left.)
 
 ## Configuring buttons
@@ -64,8 +66,8 @@ If you want to remap the app buttons, you must first uninstall the app you don't
 
 -   Uninstall the Prime app.
 -   Get the Plex app id by copying the included list_apps.py script to the TV.
-    - ```wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/main/list_apps.py```
-    - Run it with:
+    -   `wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/main/list_apps.py`
+    -   Run it with:
         -   (C9/CX): `python list_apps.py`
         -   (C1/C2+): `python3 list_apps.py`
     -   This will list the app names followed by their app ID such as `Plex : cdp-30`, cdp-30 is the app id for Plex.
@@ -134,7 +136,7 @@ If you want to remap the app buttons, you must first uninstall the app you don't
 ### set_energy_mode
 
 -   Set a specific energy savings mode
-    - note "screen_off" activates the screen off setting which turns off the screen until you push a button other than the power button.
+    -   note "screen_off" activates the screen off setting which turns off the screen until you push a button other than the power button.
 -   Inputs:
     -   **mode** (string, default: none, values: "off", "min", "med", "max", "auto", "screen_off")
     -   **notifications** (boolean, default: false): Show a toast notification on change
@@ -180,62 +182,65 @@ If you want to remap the app buttons, you must first uninstall the app you don't
       }
     }
     ```
+
 ### send_ir_command
-- Send an IR command to a device configured by the TV's Device Connector
-- Inputs:
-    - tv_input (string, default: none): The input the device is on, ie "optical" or "hdmi3" (TODO: full list unknown)
-    - keycode (string, default: none): The IR keycode to send, ie "IR_KEY_POWER"
-    - device_type (string, default: none) ie "audio" (TODO: full list unknown)
-- Example:
-  ```
-  "0": {
-    "function": "send_ir_command",
-    "inputs": {
-      "tv_input": "optical",
-      "keycode": "IR_KEY_POWER",
-      "device_type": "audio"
-    }
-  },
-  ```
-- Known keycodes
-    - Device type "audio"
-      - "IR_KEY_POWER"
-      - "IR_KEY_VOLUP"
-      - "IR_KEY_VOLDOWN"
-      - "IR_KEY_AINFO"
-      - "IR_KEY_INPUT"
-      - "IR_KEY_REW"
-      - "IR_KEY_FF"
+
+-   Send an IR command to a device configured by the TV's Device Connector
+-   Inputs:
+    -   tv_input (string, default: none): The input the device is on, ie "optical" or "hdmi3" (TODO: full list unknown)
+    -   keycode (string, default: none): The IR keycode to send, ie "IR_KEY_POWER"
+    -   device_type (string, default: none) ie "audio" (TODO: full list unknown)
+-   Example:
+    ```
+    "0": {
+      "function": "send_ir_command",
+      "inputs": {
+        "tv_input": "optical",
+        "keycode": "IR_KEY_POWER",
+        "device_type": "audio"
+      }
+    },
+    ```
+-   Known keycodes
+    -   Device type "audio"
+        -   "IR_KEY_POWER"
+        -   "IR_KEY_VOLUP"
+        -   "IR_KEY_VOLDOWN"
+        -   "IR_KEY_AINFO"
+        -   "IR_KEY_INPUT"
+        -   "IR_KEY_REW"
+        -   "IR_KEY_FF"
 
 ### curl
-- Execute curl with the supplied url
-- Inputs:
-  - url (string, default: none) Url to supply to curl
-  - method (string, default: GET) HTTP method to use with curl -X
-  - data (string, default: none) Query string to supply to curl -d
-  - headers (string OR list, default: none) Strings to supply to curl -H
-- Examples:
-  Simple Url call
-  ```
-  "7": {
-    "function": "curl",
-    "inputs": {
-      "url": "http://simple_url.example.com",
+
+-   Execute curl with the supplied url
+-   Inputs:
+    -   url (string, default: none) Url to supply to curl
+    -   method (string, default: GET) HTTP method to use with curl -X
+    -   data (string, default: none) Query string to supply to curl -d
+    -   headers (string OR list, default: none) Strings to supply to curl -H
+-   Examples:
+    Simple Url call
+    ```
+    "7": {
+      "function": "curl",
+      "inputs": {
+        "url": "http://simple_url.example.com",
+      }
     }
-  }
-  ```
-  Call a Home Assistant webhook trigger with a json payload
-  ```
-  "9": {
-    "function": "curl",
-    "inputs": {
-      "url": "http://homeassistant.localdomain:8123/api/webhook/your-webhook-id",
-      "method": "POST",
-      "data": "{\"somekey\": \"somevalue\"}",
-      "headers": "Content-Type: application/json"
-    }
-  },
-  ```
+    ```
+    Call a Home Assistant webhook trigger with a json payload
+    ```
+    "9": {
+      "function": "curl",
+      "inputs": {
+        "url": "http://homeassistant.localdomain:8123/api/webhook/your-webhook-id",
+        "method": "POST",
+        "data": "{\"somekey\": \"somevalue\"}",
+        "headers": "Content-Type: application/json"
+      }
+    },
+    ```
 
 ## Button List
 
@@ -306,6 +311,7 @@ If you love this project and want to donate to support it, donate your money som
 
 ## TODO Items
 
-- Add an option to only execute a button config when the specified app is in focus
-- Add option to execute a set of commands on Power On (not just on full boot)
-- Add support for long vs short button presses (currently button presses longer than 1s are ignored)
+-   Add an option to only execute a button config when the specified app is in focus
+-   Add option to execute a set of commands on Power On (not just on full boot)
+-   Add support for long vs short button presses (currently button presses longer than 1s are ignored)
+-   Add function to fire the the play/pause command
