@@ -3,13 +3,13 @@
     "function": "cycle_energy_mode",
     "inputs": {
       "reverse_order": false,
-      "notifications": true
+      "notifications": false
     }
   },
   "blue": {
     "function": "toggle_eye_comfort",
     "inputs": {
-      "notifications": false
+      "notifications": true
     }
   },
   "red": {
