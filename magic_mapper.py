@@ -3,6 +3,7 @@ import os
 import struct
 import subprocess
 import json
+import pipes
 
 BUTTONS = {
     398: "red",
@@ -227,6 +228,50 @@ def send_ir_command(inputs):
     endpoint = "luna://com.webos.service.irdbmanager/sendIrCommand"
     payload = {"keyCode": keycode, "buttonState": "single", "connectedInput": tv_input, "deviceType": device_type}
     luna_send(endpoint, payload)
+
+
+def curl(inputs):
+    """ Execute the system curl binary with the provided inputs
+        Note this script has to work on Python 2.7 and 3.x, and very
+        few Python libraries are included in WebOS, so it's just we'll
+        keep it simple and use the system curl binary vs urllib.
+    """
+
+    url = inputs.get('url')
+    if not url:
+        print('ERROR: curl function called but url not supplied')
+
+    method = inputs.get('method', 'GET').upper()
+
+    command_string = "curl -vs -X %s" % method
+    command = command_string.split()
+
+    data = inputs.get('data')
+    if data:
+        command.append("-d %s" % pipes.quote(data))
+
+    headers = inputs.get('headers')
+    if headers:
+        if type(headers) == str:
+            command.append("-H %s" % pipes.quote(headers))
+        elif type(headers) == list:
+            for header in headers:
+                command.append("-H %s" % pipes.quote(header))
+        else:
+            print('ERROR: curl headers of type %s not supported' % type(headers))
+            return
+
+    command.append(url)
+
+    print('Running curl command: %s' % ' '.join(command))
+
+    try:
+        output = subprocess.check_output(command)
+    except subprocess.CalledProcessError as error:
+        print('WARNING: curl command failed')
+        return
+
+    return output
 
 
 if __name__ == "__main__":

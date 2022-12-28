@@ -17,6 +17,7 @@ The script has support to do the the following (default config button):
 -   Toggle the Eye Comfort Mode (also known as Reduce Blue Light) (blue button)
 -   Launch an app (not configured by default)
 -   Send IR commands to a device configured by the Device Connector (ie have a shortcut key to toggle power on for an optical connected soundbar)
+-   Curl a URL (ie call a HomeAssistant webhook trigger URL with a payload)
 
 ## TV Models supported
 
@@ -205,6 +206,37 @@ If you want to remap the app buttons, you must first uninstall the app you don't
       - "IR_KEY_INPUT"
       - "IR_KEY_REW"
       - "IR_KEY_FF"
+
+### curl
+- Execute curl with the supplied url
+- Inputs:
+  - url (string, default: none) Url to supply to curl
+  - method (string, default: GET) HTTP method to use with curl -X
+  - data (string, default: none) Query string to supply to curl -d
+  - headers (string OR list, default: none) Strings to supply to curl -H
+- Examples:
+  ```
+  "7": {
+    "function": "curl",
+    "inputs": {
+      "url": "http://simple_url.example.com",
+    }
+  }
+  ```
+  ```
+  "7": {
+    "function": "curl",
+    "inputs": {
+      "url": "http://homeassistant.local:8123/api/webhook/dim_room_lights",
+      "method": "POST",
+      "data": "{ \"light_value\": \"50\" }",
+      "headers": [
+        "Content-Type: application/json",
+        "Some: OtherHeader"
+      ]
+    }
+  }
+  ```
 
 ## Button List
 
