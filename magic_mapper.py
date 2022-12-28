@@ -120,7 +120,7 @@ def luna_send(endpoint, payload):
 
 
 def cycle_energy_mode(inputs):
-    """ cycle energy modes between min med max off """
+    """cycle energy modes between min med max off"""
     modes = ["max", "med", "min", "off"]
     if inputs.get("reverse_order"):
         modes.reverse()
@@ -139,7 +139,7 @@ def cycle_energy_mode(inputs):
 
 
 def toggle_eye_comfort(inputs):
-    """ Toggle the eye comfort mode aka reduce blue light """
+    """Toggle the eye comfort mode aka reduce blue light"""
     current_mode = get_picture_settings()["settings"]["eyeComfortMode"]
     print("current eye comfort mode: current_mode %s" % current_mode)
     if current_mode == "off":
@@ -226,36 +226,41 @@ def show_message(message):
 
 
 def send_ir_command(inputs):
-    """ Send an IR command to a configured device
-        This relies on you using the device connection manager to setup your IR device (ie a soundbar)
-        Once setup you can use this function to have the remote send IR commands
+    """Send an IR command to a configured device
+    This relies on you using the device connection manager to setup your IR device (ie a soundbar)
+    Once setup you can use this function to have the remote send IR commands
     """
-    tv_input = inputs['tv_input']  # "OPTICAL", other inputs untested
-    keycode = inputs['keycode']  # "IR_KEY_VOLUP" "IR_KEY_POWER"
-    device_type = inputs['device_type']  # "audio"
+    tv_input = inputs["tv_input"]  # "OPTICAL", other inputs untested
+    keycode = inputs["keycode"]  # "IR_KEY_VOLUP" "IR_KEY_POWER"
+    device_type = inputs["device_type"]  # "audio"
 
     endpoint = "luna://com.webos.service.irdbmanager/sendIrCommand"
-    payload = {"keyCode": keycode, "buttonState": "single", "connectedInput": tv_input, "deviceType": device_type}
+    payload = {
+        "keyCode": keycode,
+        "buttonState": "single",
+        "connectedInput": tv_input,
+        "deviceType": device_type,
+    }
     luna_send(endpoint, payload)
 
 
 def curl(inputs):
-    """ Execute the system curl binary with the provided inputs
-        Note this script has to work on Python 2.7 and 3.x, and very
-        few Python libraries are included in WebOS, so it's just we'll
-        keep it simple and use the system curl binary vs urllib.
+    """Execute the system curl binary with the provided inputs
+    Note this script has to work on Python 2.7 and 3.x, and very
+    few Python libraries are included in WebOS, so we'll just
+    keep it simple and use the system curl binary vs urllib.
     """
 
-    url = inputs.get('url')
+    url = inputs.get("url")
     if not url:
-        print('ERROR: curl function called but url not supplied')
+        print("ERROR: curl function called but url not supplied")
 
-    method = inputs.get('method', 'GET').upper()
+    method = inputs.get("method", "GET").upper()
 
     command_string = "curl -vs -X %s" % method
     command = command_string.split()
 
-    headers = inputs.get('headers')
+    headers = inputs.get("headers")
     if headers:
         if type(headers) == list:
             for header in headers:
@@ -266,22 +271,21 @@ def curl(inputs):
             command.append("-H")
             command.append(headers)
 
-    data = inputs.get('data')
+    data = inputs.get("data")
     if data:
         command.append("-d")
         command.append(data)
 
     command.append(url)
-    print('Running curl command: %s' % ' '.join(command))
+    print("Running curl command: %s" % " ".join(command))
 
     try:
         output = subprocess.check_output(command)
     except subprocess.CalledProcessError as error:
-        print('WARNING: curl command failed')
+        print("WARNING: curl command failed")
+        print(error)
         return
 
-    # if data:
-    #     os.remove(data_path)
     return output
 
 
