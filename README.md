@@ -215,6 +215,7 @@ If you want to remap the app buttons, you must first uninstall the app you don't
   - data (string, default: none) Query string to supply to curl -d
   - headers (string OR list, default: none) Strings to supply to curl -H
 - Examples:
+  Simple Url call
   ```
   "7": {
     "function": "curl",
@@ -223,19 +224,17 @@ If you want to remap the app buttons, you must first uninstall the app you don't
     }
   }
   ```
+  Call a Home Assistant webhook trigger with a json payload
   ```
-  "7": {
+  "9": {
     "function": "curl",
     "inputs": {
-      "url": "http://homeassistant.local:8123/api/webhook/dim_room_lights",
+      "url": "http://homeassistant.localdomain:8123/api/webhook/your-webhook-id",
       "method": "POST",
-      "data": "{ \"light_value\": \"50\" }",
-      "headers": [
-        "Content-Type: application/json",
-        "Some: OtherHeader"
-      ]
+      "data": "{\"somekey\": \"somevalue\"}",
+      "headers": "Content-Type: application/json"
     }
-  }
+  },
   ```
 
 ## Button List
