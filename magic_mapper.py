@@ -3,7 +3,6 @@ import os
 import struct
 import subprocess
 import json
-import pipes
 
 BUTTONS = {
     398: "red",
@@ -246,23 +245,23 @@ def curl(inputs):
     command_string = "curl -vs -X %s" % method
     command = command_string.split()
 
-    data = inputs.get('data')
-    if data:
-        command.append("-d %s" % pipes.quote(data))
-
     headers = inputs.get('headers')
     if headers:
-        if type(headers) == str:
-            command.append("-H %s" % pipes.quote(headers))
-        elif type(headers) == list:
+        if type(headers) == list:
             for header in headers:
-                command.append("-H %s" % pipes.quote(header))
-        else:
-            print('ERROR: curl headers of type %s not supported' % type(headers))
-            return
+                command.append("-H")
+                command.append(header)
+        elif type(headers) != str:  # Python 2.7 on the C9 returns unicode instead of str
+            headers = str(headers)
+            command.append("-H")
+            command.append(headers)
+
+    data = inputs.get('data')
+    if data:
+        command.append("-d")
+        command.append(data)
 
     command.append(url)
-
     print('Running curl command: %s' % ' '.join(command))
 
     try:
@@ -271,6 +270,8 @@ def curl(inputs):
         print('WARNING: curl command failed')
         return
 
+    # if data:
+    #     os.remove(data_path)
     return output
 
 
