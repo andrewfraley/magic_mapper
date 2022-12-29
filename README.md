@@ -44,11 +44,11 @@ chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 ```
 
 -   Edit magic_mapper_config.json as needed
--   Lastly, reboot the TV (recommended to use the HomeBrew app to reboot to avoid crash detection issues, launch HomeBrew app, click cog, click reboot link on bottom left.)
+-   Lastly, reboot the TV (execute the reboot command over SSH, or open the homebrew app, click the cog, click the reboot link.)
 
 ## Configuring buttons
 
-Buttons are configured via the magic_mapper_config.json file. magic_mapper_config.json contains a json formatted dictionary where each primary key is the name of the button to map (see the Button List below). Note that changes to magic_mapper_config.json require you to restart the script, so just reboot your TV or if testing over SSH, kill the magic_mapper.py process and run the script manually. To reboot your TV, it's recommended that you use the Home Brew app to do it to avoid Home Brew errors (the script won't start if Home Brew crash detection kicks in). To reboot with Home Brew, open the Home Brew app, click the cog icon, then click the reboot link on the bottom left.
+Buttons are configured via the magic_mapper_config.json file. magic_mapper_config.json contains a json formatted dictionary where each primary key is the name of the button to map (see the Button List below). Note that changes to magic_mapper_config.json require you to restart the script, so just reboot your TV or if testing over SSH, kill the magic_mapper.py process and run the script manually.
 
 ```
 "yellow": {  # The name of the button to remap, see the Button List below
@@ -193,7 +193,7 @@ If you want to remap the app buttons, you must first uninstall the app you don't
     }
     ```
 
-### press_play / press_pause
+### press_button
 - Send a button press.  This makes the TV think you actually pressed the button on the remote.  This allows the newer Magic Remotes that don't have play and pause buttons to use other keys to send the same keystrokes.
   - Note some apps like Netflix don't need the pause button and you can just use "play" to both pause and play, but others like Plex require both buttons.
 - Inputs:
