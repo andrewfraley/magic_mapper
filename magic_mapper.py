@@ -33,16 +33,20 @@ BUTTONS = {
     1117: "google",
 }
 
+INPUT_DEVICE = '/dev/input/event3'
+
 
 def main():
     """MAIN"""
 
     button_map = get_button_map()
-    input_loop(input_device="/dev/input/event3", button_map=button_map)
+    input_loop(button_map=button_map)
 
 
-def input_loop(input_device, button_map):
-    infile_path = input_device
+def input_loop(button_map):
+    # Read from the input device
+    # https://stackoverflow.com/a/16682549/866057
+    infile_path = INPUT_DEVICE
     input_format = "llHHI"
     event_size = struct.calcsize(input_format)
     in_file = open(infile_path, "rb")
@@ -287,6 +291,54 @@ def curl(inputs):
         return
 
     return output
+
+
+def press_button(inputs):
+    """ Simulate a button press on the remote
+        This is useful to simulate the play and pause buttons for remotes that don't have these buttons
+        Inputs: button_name (str)
+    """
+    button = inputs['button']
+    keycode = get_keycode(button)
+    print("Simulating keystroke with button '%s' (keycode %s)" % (button, keycode))
+    send_keystroke(INPUT_DEVICE, keycode)
+
+
+def get_keycode(button):
+    """ Returns the keycode associated with the button name """
+    keys = [k for k, v in BUTTONS.items() if v == button]
+    return keys[0]
+
+
+def send_keystroke(device, keycode):
+    """ Send a keystroke to the input device
+        We use this to simulate button presses like play/pause since those require special handling
+        Use the press_button function for magic_mapper_config.py
+    };
+    """
+    send_input_event(device, keycode, 1, 1)
+    send_input_event(device, 0, 0, 0)
+    send_input_event(device, keycode, 0, 1)
+    send_input_event(device, 0, 0, 0)
+
+
+def send_input_event(device, keycode, value, event_type):
+    """ Low level function to write to the input device file
+        Don't call this from magic_mapper_config.json
+    """
+    input_format = "llHHI"
+
+    out_file = os.open(device, os.O_RDWR)
+    now = time.time()
+    tv_sec = int(now)
+    tv_usec = int((now - tv_sec) * 1000000)
+
+    data = [tv_sec, tv_usec, event_type, keycode, value]
+    print("writing: %s" % data)
+
+    event = struct.pack(input_format, *data)
+    os.write(out_file, event)
+    os.close(out_file)
 
 
 if __name__ == "__main__":

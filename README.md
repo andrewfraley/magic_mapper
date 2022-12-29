@@ -193,6 +193,29 @@ If you want to remap the app buttons, you must first uninstall the app you don't
     }
     ```
 
+### press_play / press_pause
+- Send a button press.  This makes the TV think you actually pressed the button on the remote.  This allows the newer Magic Remotes that don't have play and pause buttons to use other keys to send the same keystrokes.
+  - Note some apps like Netflix don't need the pause button and you can just use "play" to both pause and play, but others like Plex require both buttons.
+- Inputs:
+  - **button** (string, default: none) The name of the button to press (see the Button List below)
+- Examples:
+  ```
+  "4": {
+    "function": "press_button",
+    "inputs": {
+      "button": "play"
+    }
+  }
+  ```
+  ```
+  "5": {
+    "function": "press_button",
+    "inputs": {
+      "button": "pause"
+    }
+  }
+  ```
+
 ### send_ir_command
 
 -   Send an IR command to a device configured by the TV's Device Connector
