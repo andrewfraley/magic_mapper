@@ -346,6 +346,5 @@ If you love this project and want to donate to support it, donate your money som
 ## TODO Items
 
 -   Add an option to only execute a button config when the specified app is in focus
--   Add option to execute a set of commands on Power On (not just on full boot)
+-   Add option to execute a set of commands on Power On (not just on full boot), used to set some power on defaults
 -   Add support for long vs short button presses (currently button presses longer than 1s are ignored)
--   Add function to fire the the play/pause command
