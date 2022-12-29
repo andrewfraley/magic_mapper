@@ -18,6 +18,7 @@ The script has support to do the the following (default config button):
 -   Launch an app (not configured by default)
 -   Send IR commands to a device configured by the Device Connector (ie have a shortcut key to toggle power on for an optical connected soundbar)
 -   Curl a URL (ie call a HomeAssistant webhook trigger URL with a payload)
+-   Simulate a button press (useful to send play and pause commands on remotes without these buttons, ie use "green" for play and "red" for pause)
 
 ## TV Models supported
 
