@@ -109,6 +109,16 @@ def set_oled_backlight(inputs):
         show_message("OLED Backlight: %s" % backlight)
 
 
+def launch_app(inputs):
+    """ Launch an app by app_id
+        Inputs: app_id  - Use list_apps.py to get the app_id
+    """
+    app_id = inputs['app_id']
+    endpoint = "luna://com.webos.service.applicationmanager/launch"
+    payload = {"id": app_id}
+    luna_send(endpoint, payload)
+
+
 def send_ir_command(inputs):
     """Send an IR command to a configured device
     This relies on you using the device connection manager to setup your IR device (ie a soundbar)
