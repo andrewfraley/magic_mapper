@@ -85,6 +85,10 @@ If you want to remap the app buttons, you must first uninstall the app you don't
 
 -   Now when you press the Prime button, Plex will launch instead.
 
+## Logs
+
+start_magic_mapper will redirect output to /tmp/magic_mapper.log
+
 ## Function List
 
 ### cycle_energy_mode
@@ -135,19 +139,20 @@ If you want to remap the app buttons, you must first uninstall the app you don't
     ```
 
 ### screen_off
-- Turns the screen off but not the TV itself, press any button other than powe and vol to turn it back on
-- Inputs: None
-- Example:
-  ```
-  "9": {
-    "function": "screen_off"
-  }
-  ```
+
+-   Turns the screen off but not the TV itself, press any button other than powe and vol to turn it back on
+-   Inputs: None
+-   Example:
+    ```
+    "9": {
+      "function": "screen_off"
+    }
+    ```
 
 ### set_energy_mode
 
 -   Set a specific energy savings mode
-    - Note there was a report of "screen_off" not working on a CS model, so it's recommended to use the screen_off function instead
+    -   Note there was a report of "screen_off" not working on a CS model, so it's recommended to use the screen_off function instead
 -   Inputs:
     -   **mode** (string, default: none, values: "off", "min", "med", "max", "auto", "screen_off")
     -   **notifications** (boolean, default: false): Show a toast notification on change
@@ -195,27 +200,28 @@ If you want to remap the app buttons, you must first uninstall the app you don't
     ```
 
 ### press_button
-- Send a button press.  This makes the TV think you actually pressed the button on the remote.  This allows the newer Magic Remotes that don't have play and pause buttons to use other keys to send the same keystrokes.
-  - Note some apps like Netflix don't need the pause button and you can just use "play" to both pause and play, but others like Plex require both buttons.
-- Inputs:
-  - **button** (string, default: none) The name of the button to press (see the Button List below)
-- Examples:
-  ```
-  "4": {
-    "function": "press_button",
-    "inputs": {
-      "button": "play"
+
+-   Send a button press. This makes the TV think you actually pressed the button on the remote. This allows the newer Magic Remotes that don't have play and pause buttons to use other keys to send the same keystrokes.
+    -   Note some apps like Netflix don't need the pause button and you can just use "play" to both pause and play, but others like Plex require both buttons.
+-   Inputs:
+    -   **button** (string, default: none) The name of the button to press (see the Button List below)
+-   Examples:
+    ```
+    "4": {
+      "function": "press_button",
+      "inputs": {
+        "button": "play"
+      }
     }
-  }
-  ```
-  ```
-  "5": {
-    "function": "press_button",
-    "inputs": {
-      "button": "pause"
+    ```
+    ```
+    "5": {
+      "function": "press_button",
+      "inputs": {
+        "button": "pause"
+      }
     }
-  }
-  ```
+    ```
 
 ### send_ir_command
 
@@ -314,7 +320,8 @@ Note that long presses (longer than 1s) are ignored. I will eventually add suppo
 ## Other Use Cases
 
 ### Input Switching
-The remote has built in shortcuts for input switching using the "Quick Select" functionality where you long press the number keys.  If you'd rather have short press input shortcuts instead (and the ability to use the color buttons), you can use the `launch_app` function.
+
+The remote has built in shortcuts for input switching using the "Quick Select" functionality where you long press the number keys. If you'd rather have short press input shortcuts instead (and the ability to use the color buttons), you can use the `launch_app` function.
 
 ```
 "1": {

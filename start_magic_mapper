@@ -7,7 +7,7 @@
 
 
 if [ -f "/usr/bin/python" ]; then
-  /usr/bin/python /home/root/magic_mapper.py
+  /usr/bin/python /home/root/magic_mapper.py > /tmp/magic_mapper.log 2>&1
 else
-  /usr/bin/python3 /home/root/magic_mapper.py
+  /usr/bin/python3 /home/root/magic_mapper.py > /tmp/magic_mapper.log 2>&1
 fi
