@@ -311,6 +311,20 @@ Note that long presses (longer than 1s) are ignored. I will eventually add suppo
  "google"
 ```
 
+## Other Use Cases
+
+### Input Switching
+The remote has built in shortcuts for input switching using the "Quick Select" functionality where you long press the number keys.  If you'd rather have short press input shortcuts instead (and the ability to use the color buttons), you can use the `launch_app` function.
+
+```
+"1": {
+  "function": "launch_app",
+  "inputs": {
+    "app_id": "com.webos.app.hdmi3"
+  }
+}
+```
+
 ## Help!
 
 If you need assistance, please open an issue on Github here: https://github.com/andrewfraley/magic_mapper/issues
