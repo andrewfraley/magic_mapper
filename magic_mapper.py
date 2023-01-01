@@ -33,7 +33,7 @@ BUTTONS = {
     1117: "google",
 }
 
-INPUT_DEVICE = '/dev/input/event3'
+INPUT_DEVICE = "/dev/input/event3"
 
 
 def cycle_energy_mode(inputs):
@@ -71,8 +71,8 @@ def toggle_eye_comfort(inputs):
 
 
 def screen_off(inputs):
-    """ Turns the screen off, but not the TV itself.
-        Press any button but power and vol to turn it back on.
+    """Turns the screen off, but not the TV itself.
+    Press any button but power and vol to turn it back on.
     """
     endpoint = "luna://com.webos.service.tvpower/power/turnOffScreen"
     payload = {}
@@ -80,9 +80,9 @@ def screen_off(inputs):
 
 
 def set_energy_mode(inputs):
-    """ Sets the energy savings mode
-        Valid values: min med max off auto screen_off
-        screen_off may not work on some models, best to use the screen_off function instead
+    """Sets the energy savings mode
+    Valid values: min med max off auto screen_off
+    screen_off may not work on some models, best to use the screen_off function instead
     """
     mode = inputs["mode"]
     endpoint = "luna://com.webos.settingsservice/setSystemSettings"
@@ -110,10 +110,10 @@ def set_oled_backlight(inputs):
 
 
 def launch_app(inputs):
-    """ Launch an app by app_id
-        Inputs: app_id  - Use list_apps.py to get the app_id
+    """Launch an app by app_id
+    Inputs: app_id  - Use list_apps.py to get the app_id
     """
-    app_id = inputs['app_id']
+    app_id = inputs["app_id"]
     endpoint = "luna://com.webos.service.applicationmanager/launch"
     payload = {"id": app_id}
     luna_send(endpoint, payload)
@@ -184,11 +184,11 @@ def curl(inputs):
 
 
 def press_button(inputs):
-    """ Simulate a button press on the remote
-        This is useful to simulate the play and pause buttons for remotes that don't have these buttons
-        Inputs: button_name (str)
+    """Simulate a button press on the remote
+    This is useful to simulate the play and pause buttons for remotes that don't have these buttons
+    Inputs: button_name (str)
     """
-    button = inputs['button']
+    button = inputs["button"]
     keycode = get_keycode(button)
     print("Simulating keystroke with button '%s' (keycode %s)" % (button, keycode))
     send_keystroke(INPUT_DEVICE, keycode)
@@ -198,6 +198,7 @@ def press_button(inputs):
 # Private Functions
 # The fuctions below here should not be called by magic_mapper_config.json
 ####################################
+
 
 def get_button_map():
     """Read the json config file"""
@@ -267,13 +268,13 @@ def show_message(message):
 
 
 def get_keycode(button):
-    """ Returns the keycode associated with the button name """
+    """Returns the keycode associated with the button name"""
     keys = [k for k, v in BUTTONS.items() if v == button]
     return keys[0]
 
 
 def send_keystroke(device, keycode):
-    """ Send a keystroke to the input device
+    """Send a keystroke to the input device
         We use this to simulate button presses like play/pause since those require special handling
         Use the press_button function for magic_mapper_config.py
     };
@@ -285,8 +286,8 @@ def send_keystroke(device, keycode):
 
 
 def send_input_event(device, keycode, value, event_type):
-    """ Low level function to write to the input device file
-        Don't call this from magic_mapper_config.json
+    """Low level function to write to the input device file
+    Don't call this from magic_mapper_config.json
     """
     input_format = "llHHI"
 
@@ -306,16 +307,23 @@ def send_input_event(device, keycode, value, event_type):
 def input_loop(button_map):
     # Read from the input device
     # https://stackoverflow.com/a/16682549/866057
-    infile_path = INPUT_DEVICE
+    device = INPUT_DEVICE
     input_format = "llHHI"
     event_size = struct.calcsize(input_format)
-    in_file = open(infile_path, "rb")
-    event = in_file.read(event_size)
+    device_handle = open(device, "rb")
+    # device_handle = os.open(device, os.O_RDONLY)
+    event = device_handle.read(event_size)
 
     code_wait = None  # Are we waiting for button up
     code_wait_start = None
     while event:
         (tv_sec, tv_usec, type, code, value) = struct.unpack(input_format, event)
+        # print("debug code_wait: %s - code: %s - value: %s" % (code_wait, code, value))
+
+        if code_wait and value == 1:
+            print("WARNING: Got code %s DOWN while waiting for code %s UP" % (code, code_wait))
+            code_wait = None
+
         if code in BUTTONS:
 
             # print("button code: %s" % code)
@@ -342,15 +350,19 @@ def input_loop(button_map):
                     fire_event(code, button_map)
                 else:
                     print("Ignoring long press of %s" % BUTTONS[code])
+
         elif code not in [0, 1] and value == 0:
             print("Unknown button pressed. (code=%s)" % code)
-        event = in_file.read(event_size)
 
-    in_file.close()
+        event = device_handle.read(event_size)
 
 
 def main():
     """MAIN"""
+    # press_button({"button": "green"})
+    # catchable_sigs = set(signal.Signals) - {signal.SIGKILL, signal.SIGSTOP}
+    # for sig in catchable_sigs:
+    #     signal.signal(sig, print)  # Substitute handler of choice for `print`
 
     button_map = get_button_map()
     input_loop(button_map=button_map)
