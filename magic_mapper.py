@@ -326,11 +326,6 @@ def input_loop(button_map):
 
         if code in BUTTONS:
 
-            # print("button code: %s" % code)
-            # print("button value: %s" % value)
-            # print("code_wait: %s" % code_wait)
-            # print("code_wait_start: %s" % code_wait_start)
-
             if not code_wait and value == 1:  # Start waiting for button up
                 print("%s button down" % BUTTONS[code])
                 code_wait = code
@@ -359,10 +354,6 @@ def input_loop(button_map):
 
 def main():
     """MAIN"""
-    # press_button({"button": "green"})
-    # catchable_sigs = set(signal.Signals) - {signal.SIGKILL, signal.SIGSTOP}
-    # for sig in catchable_sigs:
-    #     signal.signal(sig, print)  # Substitute handler of choice for `print`
 
     button_map = get_button_map()
     input_loop(button_map=button_map)
