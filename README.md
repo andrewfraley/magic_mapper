@@ -66,6 +66,14 @@ Buttons are configured via the magic_mapper_config.json file. magic_mapper_confi
 }
 ```
 
+## Disabling a button
+
+Use this to completely disable a button.  Note this will not work if ```EXCLUSIVE_MODE = False```
+
+```
+"netflix": "disabled"
+```
+
 ## Overriding App Buttons
 
 If you wanted to replace the Amazon Prime button with Plex:
