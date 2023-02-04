@@ -35,7 +35,9 @@ BUTTONS = {
 }
 
 INPUT_DEVICE = "/dev/input/event3"
-IGNORED_CODES = [0, 1, 1198, 1199]
+OUTPUT_DEVICE = "/dev/input/event4"
+EXCLUSIVE_MODE = True
+EVIOCGRAB = 1074021776
 
 
 def cycle_energy_mode(inputs):
@@ -308,44 +310,50 @@ def send_input_event(device, keycode, value, event_type):
 def input_loop(button_map):
     # Read from the input device
     # https://stackoverflow.com/a/16682549/866057
-    device = INPUT_DEVICE
     input_format = "llHHI"
     event_size = struct.calcsize(input_format)
-    device_handle = open(device, "rb")
-
+    input_device = open(INPUT_DEVICE, "rb")
     buttons_waiting = {}
 
+    if EXCLUSIVE_MODE:
+        fcntl.ioctl(input_device, EVIOCGRAB, 1)
+        output_device = os.open("/dev/input/event4", os.O_WRONLY)
+
     while True:
-        event = device_handle.read(event_size)
+        event = input_device.read(event_size)
         (tv_sec, tv_usec, type, code, value) = struct.unpack(input_format, event)
         # print("debug code_wait: %s - code: %s - value: %s" % (code_wait, code, value))
         now = time.time()
 
-        if code in IGNORED_CODES:
+        key = BUTTONS.get(code)
+        mapped = key in button_map
+
+        if not mapped:
+            if EXCLUSIVE_MODE:  # If in exclusive mode, we need to send the input event back so it can be read by others
+                os.write(output_device, event)
+            if key and value == 1:
+                print("Button %s not configured in magic_mappy_conf.json" % key)
+            elif value == 1:
+                print("Button code %s ignored" % code)
             continue
 
         # Button Down
         if value == 1:
+            print("%s button down" % BUTTONS[code])
             if code in buttons_waiting and now - buttons_waiting[code] < 1.0:
                 print("WARNING: Got code %s DOWN while waiting for UP" % code)
             buttons_waiting[code] = now
-            if code in BUTTONS:
-                print("%s button down" % BUTTONS[code])
-            continue
 
         # Button Up
         if value == 0:
             if code not in buttons_waiting:
                 print("WARNING: Got code %s UP with no DOWN" % code)
                 continue
-            elif code not in BUTTONS:
-                print("Unknown button pressed. (code=%s)" % code)
             elif now - buttons_waiting[code] > 1.0:
                 print("Ignoring long press of %s" % BUTTONS[code])
             else:
                 print("%s button up" % BUTTONS[code])
                 fire_event(code, button_map)
-            del(buttons_waiting[code])
 
 
 def main():
