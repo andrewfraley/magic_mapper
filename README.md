@@ -30,6 +30,7 @@ The script has support to do the the following (default config button):
 
 ## Known Issues
 - If a button has a long press function (ie 0-9), and it's configured in magic_mapper_conf.json, long pressing the button will no longer work.
+- This script attempts to take exclusive control of the remote's input device; this could have unknown unintended consequences.  If weird things start happening, edit the script and set ```EXCLUSIVE_MODE = False``` near the top.  Note that with exclusive mode disabled, a button's default behavior will not be blocked, which means you will not be able to ovveride app buttons.
 
 ## Installation / Setup
 
