@@ -195,7 +195,7 @@ def press_button(inputs):
     button = inputs["button"]
     keycode = get_keycode(button)
     print("Simulating keystroke with button '%s' (keycode %s)" % (button, keycode))
-    send_keystroke(INPUT_DEVICE, keycode)
+    send_keystroke(OUTPUT_DEVICE, keycode)
 
 
 ###################################
@@ -218,11 +218,14 @@ def fire_event(code, button_map):
     if button_name not in button_map:
         print("Button %s not configured in magic_mapper_config.json " % button_name)
         return
-
+    button = button_map[button_name]
+    if button == "disabled":
+        print("Button %s is disabled" % button_name)
+        return
     print("firing event for code: %s button: %s" % (code, button_name))
-    func_name = button_map[button_name]["function"]
+    func_name = button["function"]
     print("func_name: %s" % func_name)
-    inputs = button_map[button_name].get("inputs", {})
+    inputs = button.get("inputs", {})
     globals()[func_name](inputs)
 
 
@@ -300,7 +303,7 @@ def send_input_event(device, keycode, value, event_type):
     tv_usec = int((now - tv_sec) * 1000000)
 
     data = [tv_sec, tv_usec, event_type, keycode, value]
-    print("writing: %s" % data)
+    # print("writing: %s" % data)
 
     event = struct.pack(input_format, *data)
     os.write(out_file, event)
@@ -322,12 +325,14 @@ def input_loop(button_map):
     while True:
         event = input_device.read(event_size)
         (tv_sec, tv_usec, type, code, value) = struct.unpack(input_format, event)
-        # print("debug code_wait: %s - code: %s - value: %s" % (code_wait, code, value))
+
+        # if code not in [0, 1]:
+        #     print("event - code: %s - value: %s" % (code, value))
+
         now = time.time()
 
         key = BUTTONS.get(code)
         mapped = key in button_map
-
         if not mapped:
             if EXCLUSIVE_MODE:  # If in exclusive mode, we need to send the input event back so it can be read by others
                 os.write(output_device, event)
@@ -353,6 +358,7 @@ def input_loop(button_map):
                 print("Ignoring long press of %s" % BUTTONS[code])
             else:
                 print("%s button up" % BUTTONS[code])
+                del buttons_waiting[code]
                 fire_event(code, button_map)
 
 

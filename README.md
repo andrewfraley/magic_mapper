@@ -19,13 +19,17 @@ The script has support to do the the following (default config button):
 -   Send IR commands to a device configured by the Device Connector (ie have a shortcut key to toggle power on for an optical connected soundbar)
 -   Curl a URL (ie call a HomeAssistant webhook trigger URL with a payload)
 -   Simulate a button press (useful to send play and pause commands on remotes without these buttons, ie use "green" for play and "red" for pause)
+-   Disable a button
 
-## TV Models supported
+## TV Models supported (Likely any LG TV after 2018 are supported until this stops working with unknown future models)
 
 -   LG C9 - Fully tested on FW 05.30.25
 -   LG CX - Not tested, but should work.
 -   LG C1 - Not tested, but should work.
 -   LG C2 - Fully tested
+
+## Known Issues
+- If a button has a long press function (ie 0-9), and it's configured in magic_mapper_conf.json, long pressing the button will no longer work.
 
 ## Installation / Setup
 
@@ -63,9 +67,8 @@ Buttons are configured via the magic_mapper_config.json file. magic_mapper_confi
 
 ## Overriding App Buttons
 
-If you want to remap the app buttons, you must first uninstall the app you don't use (otherwise pressing the button will still launch that app, even with this script running). For example, if you wanted to replace the Amazon Prime button with Plex:
+If you wanted to replace the Amazon Prime button with Plex:
 
--   Uninstall the Prime app.
 -   Get the Plex app id by copying the included list_apps.py script to the TV.
     -   `wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/main/list_apps.py`
     -   Run it with:
@@ -186,7 +189,7 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
 
 ### launch_app
 
--   Launch an app (See the Overriding App Buttons section Above to use on an app button, example here is for normal buttons)
+-   Launch an app
 -   Inputs:
     -   **app_id** (string, default: none): The app id to launch. To get a list of all app IDs, copy the included list_apps.py script to the TV and run it (`python list_apps.py` on C9/CX, `python3 list_apps.py` on C1/C2+)
 -   Example:
@@ -284,7 +287,7 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
 
 ## Button List
 
-List of known buttons and their codes. Not all remote buttons are on this list, but the missing ones are likely buttons where the default behavior can't be disabled. If needed, you can modify magic_mapper.py to add other button codes. Just run magic_mapper.py manually and it will list all button codes it sees.
+List of known buttons and their codes. Not all remote buttons are on this list, but if needed, you can modify magic_mapper.py to add other button codes. Just run magic_mapper.py manually and it will list all button codes it sees.
 
 Note that long presses (longer than 1s) are ignored. I will eventually add support for different actions based on short vs long press.
 
