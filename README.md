@@ -122,17 +122,20 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
   }
   ```
 
-### toggle_eye_comfort
+### set_energy_mode
 
-- Toggles the Eye Comfort Mode on and off, also known as Reduce Blue Light depending on menu.
+- Set a specific energy savings mode
+  - Note there was a report of "screen_off" not working on a CS model, so it's recommended to use the screen_off function instead
 - Inputs:
+  - **mode** (string, default: none, values: "off", "min", "med", "max", "auto", "screen_off")
   - **notifications** (boolean, default: false): Show a toast notification on change
 - Example:
   ```
-  "blue": {
-    "function": "toggle_eye_comfort",
+  "green": {
+    "function": "set_energy_mode",
     "inputs": {
-      "notifications": false
+      "mode": "auto",
+      "notifications": true
     }
   }
   ```
@@ -153,35 +156,6 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
   }
   ```
 
-### screen_off
-
-- Turns the screen off but not the TV itself, press any button other than powe and vol to turn it back on
-- Inputs: None
-- Example:
-  ```
-  "9": {
-    "function": "screen_off"
-  }
-  ```
-
-### set_energy_mode
-
-- Set a specific energy savings mode
-  - Note there was a report of "screen_off" not working on a CS model, so it's recommended to use the screen_off function instead
-- Inputs:
-  - **mode** (string, default: none, values: "off", "min", "med", "max", "auto", "screen_off")
-  - **notifications** (boolean, default: false): Show a toast notification on change
-- Example:
-  ```
-  "green": {
-    "function": "set_energy_mode",
-    "inputs": {
-      "mode": "auto",
-      "notifications": true
-    }
-  }
-  ```
-
 ### set_oled_light
 
 - Set the OLED backlight to a specific value
@@ -195,6 +169,32 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
     "inputs": {
       "backlight": 50,
       "notifications": true
+    }
+  }
+  ```
+
+### screen_off
+
+- Turns the screen off but not the TV itself, press any button other than powe and vol to turn it back on
+- Inputs: None
+- Example:
+  ```
+  "9": {
+    "function": "screen_off"
+  }
+  ```
+
+### toggle_eye_comfort
+
+- Toggles the Eye Comfort Mode on and off, also known as Reduce Blue Light depending on menu.
+- Inputs:
+  - **notifications** (boolean, default: false): Show a toast notification on change
+- Example:
+  ```
+  "blue": {
+    "function": "toggle_eye_comfort",
+    "inputs": {
+      "notifications": false
     }
   }
   ```
