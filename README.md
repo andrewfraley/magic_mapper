@@ -384,6 +384,10 @@ If you add new novel functionality that others might make use of, please submit 
 
 If you love this project and want to donate to support it, donate your money somewhere else! If you don't have a charity in mind, food banks are always in dire need of your support, consider donating to your local regional food bank.
 
+## Similar projects
+
+There is now a similar app in the HomeBrew app store called [LG Input Hook](https://repo.webosbrew.org/apps/org.webosbrew.inputhook). This app can provide similar functionality, and is easy to setup, especially if your only needs are remapping simple buttons and executing basic luna-send commands.
+
 ## TODO Items
 
 - Add an option to only execute a button config when the specified app is in focus
