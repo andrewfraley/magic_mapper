@@ -358,13 +358,13 @@ def input_loop(button_map):
         if value == 0:
             if code not in buttons_waiting:
                 print("WARNING: Got code %s UP with no DOWN" % code)
-                continue
             elif now - buttons_waiting[code] > 1.0:
                 print("Ignoring long press of %s" % BUTTONS[code])
             else:
                 print("%s button up" % BUTTONS[code])
-                del buttons_waiting[code]
                 fire_event(code, button_map)
+            if code in buttons_waiting:
+                del buttons_waiting[code]
 
 
 def main():
