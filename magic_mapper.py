@@ -32,6 +32,11 @@ BUTTONS = {
     1043: "lg_channels",
     1086: "alexa",
     1117: "google",
+    362: "guide",
+    428: "voice",
+    771: "channels",
+    994: "...",
+    1083: "search",
 }
 
 INPUT_DEVICE = "/dev/input/event3"

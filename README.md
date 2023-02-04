@@ -327,6 +327,11 @@ Note that long presses (longer than 1s) are ignored. I will eventually add suppo
  "lg_channels"
  "alexa"
  "google"
+ "guide"
+ "voice"
+ "channels"
+ "..."
+ "search"
 ```
 
 ## Other Use Cases
