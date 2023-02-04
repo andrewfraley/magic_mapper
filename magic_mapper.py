@@ -282,7 +282,7 @@ def get_keycode(button):
 def send_keystroke(device, keycode):
     """Send a keystroke to the input device
         We use this to simulate button presses like play/pause since those require special handling
-        Use the press_button function for magic_mapper_config.py
+        Use the press_button function for magic_mapper_config.json
     };
     """
     send_input_event(device, keycode, 1, 1)
