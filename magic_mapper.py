@@ -102,10 +102,20 @@ def set_energy_mode(inputs):
 
 
 def increase_oled_light(inputs):
+    """Increase the oled light value
+    Inputs:
+        increment (10) - the value to raise the light level on each press
+        disable_energy_savings (True) - If energy savings is on, disable it
+    """
     increment_oled_light(inputs, direction="up")
 
 
 def reduce_oled_light(inputs):
+    """Decrease the oled light value
+    Inputs:
+        increment (10) - the value to lower the light level on each press
+        disable_energy_savings (True) - If energy savings is on, disable it
+    """
     increment_oled_light(inputs, direction="down")
 
 
@@ -246,8 +256,17 @@ def luna_send(endpoint, payload):
 
 
 def increment_oled_light(inputs, direction):
+    """Increment the oled backlight up or down"""
     increment = inputs.get("increment", 10)
-    current_value = int(get_picture_settings()["settings"]["backlight"])
+
+    current_settings = get_picture_settings()["settings"]
+
+    disable_energy_savings = str_to_bool(inputs.get("disable_energy_savings", True))
+    if disable_energy_savings:
+        if current_settings["energySaving"] != "off":
+            set_energy_mode({"mode": "off"})
+
+    current_value = int(current_settings["backlight"])
 
     if direction == "up":
         new_value = current_value + increment
@@ -315,6 +334,13 @@ def send_input_event(device, keycode, value, event_type):
     os.close(out_file)
 
 
+def str_to_bool(string):
+    """Convert string to bool"""
+    if string.lower() in ["yes", "true"]:
+        return True
+    return False
+
+
 def input_loop(button_map):
     # Read from the input device
     # https://stackoverflow.com/a/16682549/866057
@@ -339,7 +365,8 @@ def input_loop(button_map):
         key = BUTTONS.get(code)
         mapped = key in button_map
         if not mapped:
-            if EXCLUSIVE_MODE:  # If in exclusive mode, we need to send the input event back so it can be read by others
+            # If in exclusive mode, we need to send the input event back so it can be read by others
+            if EXCLUSIVE_MODE:
                 os.write(output_device, event)
             if key and value == 1:
                 print("Button %s not configured in magic_mappy_conf.json" % key)

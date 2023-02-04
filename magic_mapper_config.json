@@ -15,13 +15,15 @@
   "red": {
     "function": "reduce_oled_light",
     "inputs": {
-      "increment": 10
+      "increment": 10,
+      "disable_energy_savings": "True"
     }
   },
   "green": {
     "function": "increase_oled_light",
     "inputs": {
-      "increment": 10
+      "increment": 10,
+      "disable_energy_savings": "True"
     }
   },
   "9": {
