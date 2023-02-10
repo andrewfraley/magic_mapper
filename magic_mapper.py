@@ -16,6 +16,10 @@ BUTTONS = {
     114: "vol_down",
     207: "play",
     119: "pause",
+    128: "stop",
+    167: "record",
+    168: "rewind",
+    208: "fastforward",
     2: "1",
     3: "2",
     4: "3",
@@ -36,13 +40,20 @@ BUTTONS = {
     428: "voice",
     771: "channels",
     994: "...",
+    799: "...alt",  # Saw this on a non-magic remote, button with three dots surrounded by a rectangle
     1083: "search",
+    217: "search_alt",  # Saw this on a non-magic remote
+    174: "exit",  # Note this is not the back button but a button that quits apps
+    829: "sap",
+    1116: "tv",
+    358: "info",
 }
 
-INPUT_DEVICE = "/dev/input/event3"
-OUTPUT_DEVICE = "/dev/input/event4"
-EXCLUSIVE_MODE = True
-EVIOCGRAB = 1074021776
+INPUT_DEVICE = "/dev/input/event3"  # Input device for the magic remote in bluetooth mode
+# INPUT_DEVICE = "/dev/input/event1"  # use this for IR remotes
+OUTPUT_DEVICE = "/dev/input/event4"  # unbound codes get resent to this device in exclusive mode
+EXCLUSIVE_MODE = True  # Prevent bound codes from being seen by WebOS
+EVIOCGRAB = 1074021776  # Don't mess with this
 
 
 def cycle_energy_mode(inputs):

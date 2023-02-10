@@ -33,6 +33,7 @@ The script has support to do the the following (default config button):
 - Some buttons automatically activate the mouse, there is currently no support for overriding this behavior.
 - If a button has a long press function (ie 0-9), and it's configured in magic_mapper_config.json, long pressing the button will no longer work.
 - This script attempts to take exclusive control of the remote's input device; this could have unknown unintended consequences. If weird things start happening, edit the script and set `EXCLUSIVE_MODE = False` near the top. Note that with exclusive mode disabled, a button's default behavior will not be blocked, which means you will not be able to ovveride app buttons or buttons such as "guide".
+- To use with an IR remote, change `INPUT_DEVICE = "/dev/input/event1"`. To use with both the magic remote and IR remote, run two copies of this script with different `INPUT_DEVICE` settings.
 
 ## Installation / Setup
 
@@ -314,6 +315,9 @@ Note that long presses (longer than 1s) are ignored. I will eventually add suppo
  "vol_down"
  "play"
  "pause"
+ "stop"
+ "fastforward"
+ "rewind"
  "1"
  "2"
  "3"
@@ -334,7 +338,13 @@ Note that long presses (longer than 1s) are ignored. I will eventually add suppo
  "voice"
  "channels"
  "..."
+ "...alt"  - Seen on a non-magic remote
  "search"
+ "search_alt" - Seen on a non-magic remote
+ "exit"  - Not the back button, this exits apps, seen on a non-magic remote
+ "sap"
+ "info"
+ "tv"
 ```
 
 ## Other Use Cases
