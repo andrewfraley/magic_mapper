@@ -39,11 +39,12 @@ BUTTONS = {
     362: "guide",
     428: "voice",
     771: "channels",
+    787: "channels_alt",  # seen on an LG IR remote
     994: "...",
-    799: "...alt",  # Saw this on a non-magic remote, button with three dots surrounded by a rectangle
+    799: "...alt",  # seen on an LG IR remote, button with three dots surrounded by a rectangle
     1083: "search",
-    217: "search_alt",  # Saw this on a non-magic remote
-    174: "exit",  # Note this is not the back button but a button that quits apps
+    217: "search_alt",  # seen on an LG IR remote
+    174: "exit",  # seen on an LG IR remote, appears to exit apps
     829: "sap",
     1116: "tv",
     358: "info",
