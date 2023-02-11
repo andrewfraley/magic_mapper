@@ -39,8 +39,8 @@ The script has support to do the the following (default config button):
 
 - Root your TV using https://rootmy.tv/ and install the Home Brew app
   - Note the above link is likely to fail on the newest firmware.
-  - Instead, follow this guide (C2 and probably C1 have issues, see next bullet): https://github.com/RootMyTV/RootMyTV.github.io/issues/85#issuecomment-1295058979
-  - The above instructions work fine for a C9, but a C2 requires additional steps for SSH to work, [outlined here](https://github.com/RootMyTV/RootMyTV.github.io/issues/85#issuecomment-1364765232):
+  - Instead, follow this guide (C2 and probably C1 have issues, see next bullet):https://gist.github.com/throwaway96/e811b0f7cc2a705a5a476a8dfa45e09f
+  - The above instructions work fine for a C9, but a C2 requires additional steps for SSH to work, [outlined here](https://gist.github.com/throwaway96/e811b0f7cc2a705a5a476a8dfa45e09f#webos-722)
 - Once your TV is rooted, run the following to download the Magic Mapper scripts (or just vi the files and copy and paste, or just use scp on the C9/CX, but the C2 doesn't support scp).
 
 ```
