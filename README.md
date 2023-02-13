@@ -370,8 +370,6 @@ You can view all issues (closed and still open) here: https://github.com/andrewf
 
 ## Modifying the script
 
-The script is currently setup to detect the button presses of the commonly unused buttons. Namely the 0-9 buttons and the color buttons. You can remap other buttons, but be aware this script does not prevent the actions a button normally takes. For example, you could override the channel +/- buttons, but some internal apps use these buttons. So if you press one, it will execute the default behavior in addition to the remapped behavior via this script.
-
 The function names supplied in magic_mapper_config.json map to the function names in the script. If you wanted to have the yellow button do something unsupported by this script, create a new function in magic_mapper.py and then add the function to magic_mapper_config.json such as:
 
 ```
