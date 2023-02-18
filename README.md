@@ -278,6 +278,7 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
   - headers (string OR list, default: none) Strings to supply to curl -H
 - Examples:
   Simple Url call
+
   ```
   "7": {
     "function": "curl",
@@ -286,7 +287,9 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
     }
   }
   ```
+
   Call a Home Assistant webhook trigger with a json payload
+
   ```
   "9": {
     "function": "curl",
@@ -305,14 +308,29 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
 - Inputs:
   - value (string, default: none) The value to use for DTM: "on", "off", "HGIG"
 - Example:
-```
-  "6": {
-    "function": "set_dynamic_tone_mapping",
-    "inputs": {
-      "value": "HGIG"
+  ```
+    "6": {
+      "function": "set_dynamic_tone_mapping",
+      "inputs": {
+        "value": "HGIG"
+      }
     }
-  }
-```
+  ```
+
+### send_cec_button
+
+- Sends a CEC button code to the current input device.  This should be considered experimental and has not been well tested.  The only currently known button code is for the "home" button.  You could override the magic remote's home button and use it to send Home to a device such as a FireTV or Shield.  Functionality would be improved if we had support for long button presses, so you could still use the TVs home menu with a long press.  More to come on this feature in the future.
+- Inputs:
+  - code (integer, default: none) The code to send.  At this time the only known code is 18882561 which is the Home command.
+- Example:
+  ```
+    "home": {
+      "function": "send_cec_button",
+      "inputs": {
+        "code": 18882561
+      }
+    }
+  ```
 
 ## Button List
 

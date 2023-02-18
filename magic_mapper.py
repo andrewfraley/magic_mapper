@@ -48,6 +48,7 @@ BUTTONS = {
     829: "sap",
     1116: "tv",
     358: "info",
+    773: "home"
 }
 
 INPUT_DEVICE = "/dev/input/event3"  # Input device for the magic remote in bluetooth mode
@@ -225,6 +226,20 @@ def press_button(inputs):
     keycode = get_keycode(button)
     print("Simulating keystroke with button '%s' (keycode %s)" % (button, keycode))
     send_keystroke(OUTPUT_DEVICE, keycode)
+
+
+def send_cec_button(inputs):
+    """ This sends an HDMI-CEC button press to the current input device
+        Consider this experimental, little is known about how this works (from my perspective as the developer)
+        Inputs:
+            code (integer, default: none) - The code to send.  Only code known at present is 18882561 which is "Home".
+    """
+    code = inputs["code"]
+    endpoint = "luna://com.webos.service.tv.keymanager/createKeyEvent"
+    payload = {"code": code, "device": "remoteControl", "id": "magic_mapper", "type": "keyDown"}
+    luna_send(endpoint, payload)
+    payload = {"code": code, "device": "remoteControl", "id": "magic_mapper", "type": "keyUp"}
+    luna_send(endpoint, payload)
 
 
 def set_dynamic_tone_mapping(inputs):
