@@ -1,0 +1,71 @@
+{
+  "yellow": {
+    "function": "set_energy_mode",
+    "inputs": {
+      "mode": "max"
+    }
+  },
+  "blue": {
+    "function": "toggle_eye_comfort",
+    "inputs": {
+      "notifications": true
+    }
+  },
+  "ch_down": {
+    "function": "reduce_oled_light",
+    "inputs": {
+      "increment": 10,
+      "disable_energy_savings": "True"
+    }
+  },
+  "ch_up": {
+    "function": "increase_oled_light",
+    "inputs": {
+      "increment": 10,
+      "disable_energy_savings": "True"
+    }
+  },
+  "green": {
+    "function": "press_button",
+    "inputs": {
+      "button": "play"
+    }
+  },
+  "red": {
+    "function": "press_button",
+    "inputs": {
+      "button": "pause"
+    }
+  },
+  "1": {
+    "function": "launch_app",
+    "inputs": {
+      "app_id": "com.webos.app.hdmi1"
+    }
+  },
+  "2": {
+    "function": "launch_app",
+    "inputs": {
+      "app_id": "com.webos.app.hdmi2"
+    }
+  },
+  "3": {
+    "function": "launch_app",
+    "inputs": {
+      "app_id": "com.webos.app.hdmi3"
+    }
+  },
+  "4": {
+    "function": "launch_app",
+    "inputs": {
+      "app_id": "com.webos.app.hdmi4"
+    }
+  },
+  "voice": {
+    "function": "screen_off"
+  },
+  "guide": "disabled",
+  "channels": "disabled",
+  "...": "disabled",
+  "search": "disabled"
+}
