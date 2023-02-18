@@ -320,12 +320,13 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
 
 ### send_cec_button
 
-- Sends a CEC button code to the current input device.  This should be considered experimental and has not been well tested.  The only currently known button code is for the "home" button.  You could override the magic remote's home button and use it to send Home to a device such as a FireTV or Shield.  Functionality would be improved if we had support for long button presses, so you could still use the TVs home menu with a long press.  In the interim, you could use send_button_press assigned to another key to send the normal home button command, or just map send_cec_button to any other button.  More to come on this feature in the future.
+- Sends a CEC button code to the current input device.  This should be considered experimental and has not been well tested.  The only currently known button code is for the "home" button.  You would use this when controlling another device over HDMI-CEC to send the Home command.  Normally, the magic remote can control a device such as a FireTV or NVidia Shield, but there's no way to send the Home command.  This will allow you to map a magic remote button to that home command, replicating what happens when you use the "..." menu and click "Home".
+- I personally have assigned this to the "..." button, but you could override the magic remote's home button if you wanted.  Functionality would be improved if we had support for long button presses, so you could still use the TVs home menu with a long press.  In the interim, you could use send_button_press assigned to another key to send the normal home button command, or just map send_cec_button to any other button.  More to come on this feature in the future.
 - Inputs:
   - code (integer, default: none) The code to send.  At this time the only known code is 18882561 which is the Home command.
 - Example:
   ```
-    "home": {
+    "...": {
       "function": "send_cec_button",
       "inputs": {
         "code": 18882561
