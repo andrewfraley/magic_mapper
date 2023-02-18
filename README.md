@@ -21,6 +21,7 @@ The script has support to do the the following (default config button):
 - [Simulate a button press](#press_button) (useful to send play and pause commands on remotes without these buttons, ie use "green" for play and "red" for pause)
 - [Disable a button](#disabling-a-button)
 - [Set Dynamic Tone Mapping setting](#set_dynamic_tone_mapping)
+- [Send hdmi-cec key presses](#send_cec_button) (EXPERIMENTAL)
 
 ## TV Models supported (Likely any LG TV after 2018 are supported until this stops working with unknown future models)
 
