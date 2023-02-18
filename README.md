@@ -8,18 +8,19 @@ Magic Mapper is a script that will let you remap unused buttons on the LG Magic 
 
 The script has support to do the the following (default config button):
 
-- Decrease the OLED light (red button)
-- Increase the OLED light (green button)
-- Set a specific OLED light value (not configured by default)
-- Cycle the energy savings modes (yellow button)
-- Set a specific energy savings mode
-- Turn the screen off - press any button but power to turn it back on (9 button)
-- Toggle the Eye Comfort Mode (also known as Reduce Blue Light) (blue button)
-- Launch an app (not configured by default)
-- Send IR commands to a device configured by the Device Connector (ie have a shortcut key to toggle power on for an optical connected soundbar)
-- Curl a URL (ie call a HomeAssistant webhook trigger URL with a payload)
-- Simulate a button press (useful to send play and pause commands on remotes without these buttons, ie use "green" for play and "red" for pause)
-- Disable a button
+- [Decrease the OLED light](#reduce_oled_light--increase_oled_light) (red button)
+- [Increase the OLED light](#reduce_oled_light--increase_oled_light) (green button)
+- [Set a specific OLED light value](#set_oled_light) (not configured by default)
+- [Cycle the energy savings modes](#cycle_energy_mode) (yellow button)
+- [Set a specific energy savings mode](#set_energy_mode)
+- [Turn the screen off](#screen_off) - press any button but power to turn it back on (9 button)
+- [Toggle the Eye Comfort Mode](#toggle_eye_comfort) (also known as Reduce Blue Light) (blue button)
+- [Launch an app](#launch_app) (not configured by default)
+- [Send IR commands](#send_ir_command) to a device configured by the Device Connector (ie have a shortcut key to toggle power on for an optical connected soundbar)
+- [Curl a URL](#curl) (ie call a HomeAssistant webhook trigger URL with a payload)
+- [Simulate a button press](#press_button) (useful to send play and pause commands on remotes without these buttons, ie use "green" for play and "red" for pause)
+- [Disable a button](#disabling-a-button)
+- [Set Dynamic Tone Mapping setting](#set_dynamic_tone_mapping)
 
 ## TV Models supported (Likely any LG TV after 2018 are supported until this stops working with unknown future models)
 
@@ -297,6 +298,21 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
     }
   },
   ```
+
+### set_dynamic_tone_mapping
+
+- Sets the Dynamic Tone Mapping setting
+- Inputs:
+  - value (string, default: none) The value to use for DTM: "on", "off", "HGIG"
+- Example:
+```
+  "6": {
+    "function": "set_dynamic_tone_mapping",
+    "inputs": {
+      "value": "HGIG"
+    }
+  }
+```
 
 ## Button List
 

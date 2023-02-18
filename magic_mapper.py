@@ -102,8 +102,10 @@ def screen_off(inputs):
 
 def set_energy_mode(inputs):
     """Sets the energy savings mode
-    Valid values: min med max off auto screen_off
-    screen_off may not work on some models, best to use the screen_off function instead
+    Inputs:
+        - mode (string, default: none)
+            - Valid values: min med max off auto screen_off
+    Note screen_off may not work on some models, best to use the screen_off function instead
     """
     mode = inputs["mode"]
     endpoint = "luna://com.webos.settingsservice/setSystemSettings"
@@ -224,6 +226,24 @@ def press_button(inputs):
     print("Simulating keystroke with button '%s' (keycode %s)" % (button, keycode))
     send_keystroke(OUTPUT_DEVICE, keycode)
 
+
+def set_dynamic_tone_mapping(inputs):
+    """ Set a specific value for Dynamic Tone Mapping
+        Inputs:
+            - value (string, default: none)
+                - Valid values: "off", "on", "HGIG"
+    """
+    value = inputs['value']
+
+    # values are case sensitive
+    if value.upper() == "HGIG":
+        value = "HGIG"
+    else:
+        value = value.lower()
+
+    endpoint = "luna://com.webos.settingsservice/setSystemSettings"
+    payload = {"category": "picture", "settings": {"hdrDynamicToneMapping": value}}
+    luna_send(endpoint, payload)
 
 ###################################
 # Private Functions
