@@ -237,12 +237,14 @@ def send_cec_button(inputs):
     code = inputs["code"]
     if WEBOS_MAJOR_VERSION < 5:
         endpoint = "luna://com.webos.service.tv.keymanager/createKeyEvent"
+        code_key = "code"
     else:
         endpoint = "luna://com.webos.service.eim/cec/sendKeyEvent"
+        code_key = "key"
 
-    payload = {"code": code, "device": "remoteControl", "id": "magic_mapper", "type": "keyDown"}
+    payload = {code_key: code, "device": "remoteControl", "id": "magic_mapper", "type": "keyDown"}
     luna_send(endpoint, payload)
-    payload = {"code": code, "device": "remoteControl", "id": "magic_mapper", "type": "keyUp"}
+    payload["type"] = "keyUp"
     luna_send(endpoint, payload)
 
 
