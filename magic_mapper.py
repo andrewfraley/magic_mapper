@@ -48,7 +48,7 @@ BUTTONS = {
     829: "sap",
     1116: "tv",
     358: "info",
-    773: "home"
+    773: "home",
 }
 
 INPUT_DEVICE = "/dev/input/event3"  # Input device for the magic remote in bluetooth mode
@@ -229,13 +229,17 @@ def press_button(inputs):
 
 
 def send_cec_button(inputs):
-    """ This sends an HDMI-CEC button press to the current input device
-        Consider this experimental, little is known about how this works (from my perspective as the developer)
-        Inputs:
-            code (integer, default: none) - The code to send.  Only code known at present is 18882561 which is "Home".
+    """This sends an HDMI-CEC button press to the current input device
+    Consider this experimental, little is known about how this works (from my perspective as the developer)
+    Inputs:
+        code (integer, default: none) - The code to send.  Only code known at present is 18882561 which is "Home".
     """
     code = inputs["code"]
-    endpoint = "luna://com.webos.service.tv.keymanager/createKeyEvent"
+    if WEBOS_MAJOR_VERSION < 5:
+        endpoint = "luna://com.webos.service.tv.keymanager/createKeyEvent"
+    else:
+        endpoint = "luna://com.webos.service.eim/cec/sendKeyEvent"
+
     payload = {"code": code, "device": "remoteControl", "id": "magic_mapper", "type": "keyDown"}
     luna_send(endpoint, payload)
     payload = {"code": code, "device": "remoteControl", "id": "magic_mapper", "type": "keyUp"}
@@ -243,12 +247,12 @@ def send_cec_button(inputs):
 
 
 def set_dynamic_tone_mapping(inputs):
-    """ Set a specific value for Dynamic Tone Mapping
-        Inputs:
-            - value (string, default: none)
-                - Valid values: "off", "on", "HGIG"
+    """Set a specific value for Dynamic Tone Mapping
+    Inputs:
+        - value (string, default: none)
+            - Valid values: "off", "on", "HGIG"
     """
-    value = inputs['value']
+    value = inputs["value"]
 
     # values are case sensitive
     if value.upper() == "HGIG":
@@ -259,6 +263,7 @@ def set_dynamic_tone_mapping(inputs):
     endpoint = "luna://com.webos.settingsservice/setSystemSettings"
     payload = {"category": "picture", "settings": {"hdrDynamicToneMapping": value}}
     luna_send(endpoint, payload)
+
 
 ###################################
 # Private Functions
@@ -388,6 +393,17 @@ def str_to_bool(string):
     return False
 
 
+def get_webos_version():
+    """Return webos version"""
+    with open("/etc/os-release") as f:
+        os_release = f.read()
+
+    matched_lines = [line for line in os_release.split("\n") if "VERSION_ID" in line]
+    full_version = matched_lines[0].split("=")[1]
+    major_version = full_version.split(".")[0]
+    return int(major_version)
+
+
 def input_loop(button_map):
     # Read from the input device
     # https://stackoverflow.com/a/16682549/866057
@@ -403,9 +419,6 @@ def input_loop(button_map):
     while True:
         event = input_device.read(event_size)
         (tv_sec, tv_usec, type, code, value) = struct.unpack(input_format, event)
-
-        # if code not in [0, 1]:
-        #     print("event - code: %s - value: %s" % (code, value))
 
         now = time.time()
 
@@ -444,6 +457,8 @@ def input_loop(button_map):
 def main():
     """MAIN"""
     button_map = get_button_map()
+    global WEBOS_MAJOR_VERSION
+    WEBOS_MAJOR_VERSION = get_webos_version()
     input_loop(button_map=button_map)
 
 
