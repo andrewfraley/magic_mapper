@@ -397,12 +397,11 @@ def str_to_bool(string):
 
 def get_webos_version():
     """Return webos version"""
-    with open("/etc/os-release") as f:
-        os_release = f.read()
+    with open("/etc/starfish-release") as f:
+        release = f.read()
 
-    matched_lines = [line for line in os_release.split("\n") if "VERSION_ID" in line]
-    full_version = matched_lines[0].split("=")[1]
-    major_version = full_version.split(".")[0]
+    version = release.split()[2]
+    major_version = version.split(".")[0]
     return int(major_version)
 
 
