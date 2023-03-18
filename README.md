@@ -22,6 +22,7 @@ The script has support to do the the following (default config button):
 - [Disable a button](#disabling-a-button)
 - [Set Dynamic Tone Mapping setting](#set_dynamic_tone_mapping)
 - [Send hdmi-cec key presses](#send_cec_button) (EXPERIMENTAL)
+- [Disable the Magic Remote mouse](#disable-mouse-experimental) (EXPERIMENTAL)
 
 ## TV Models supported (Likely any LG TV after 2018 are supported until this stops working with unknown future models)
 
@@ -59,7 +60,7 @@ chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 
 ## Configuring buttons
 
-Buttons are configured via the magic_mapper_config.json file. magic_mapper_config.json contains a json formatted dictionary where each primary key is the name of the button to map (see the Button List below). Note that changes to magic_mapper_config.json require you to restart the script, so just reboot your TV or if testing over SSH, kill the magic_mapper.py process and run the script manually.
+Buttons are configured via the magic_mapper_config.json file. magic_mapper_config.json contains a json formatted dictionary where each primary key is the name of the button to map (see the [Button List](#button-list) below). Note that changes to magic_mapper_config.json require you to restart the script, so just reboot your TV or if testing over SSH, kill the magic_mapper.py process and run the script manually.
 
 ```
 "yellow": {  # The name of the button to remap, see the Button List below
@@ -333,6 +334,10 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
       }
     }
   ```
+
+### Disable Mouse (Experimental)
+
+To disable the mouse, edit the script and change `BLOCK_MOUSE = True` near the top.  This will prevent WebOS from seeing that the remote has activated its mouse.  Note that this does not disable the mouse inside the remote, but it prevents WebOS from seeing that it has been activated.  Due to the way this works there could be erratic behavior, please report any problems by [opening an issue](https://github.com/andrewfraley/magic_mapper/issues).
 
 ## Button List
 

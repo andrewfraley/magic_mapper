@@ -5,6 +5,15 @@ import subprocess
 import json
 import fcntl
 
+BLOCK_MOUSE = False  # Set this to true to disable the mouse, note EXCLUSIVE mode must be True to work
+EXCLUSIVE_MODE = True  # Prevent bound codes from being seen by WebOS, must be True for BLOCK_MOUSE to work
+
+INPUT_DEVICE = "/dev/input/event3"  # Input device for the magic remote in bluetooth mode
+# INPUT_DEVICE = "/dev/input/event1"  # use this for IR remotes
+
+OUTPUT_DEVICE = "/dev/input/event4"  # unbound codes get resent to this device in exclusive mode
+
+
 BUTTONS = {
     398: "red",
     399: "green",
@@ -50,14 +59,6 @@ BUTTONS = {
     358: "info",
     773: "home",
 }
-
-BLOCK_MOUSE = False  # Set this to true to disable the mouse, note EXCLUSIVE mode must be True to work
-EXCLUSIVE_MODE = True  # Prevent bound codes from being seen by WebOS, must be True for BLOCK_MOUSE to work
-
-INPUT_DEVICE = "/dev/input/event3"  # Input device for the magic remote in bluetooth mode
-# INPUT_DEVICE = "/dev/input/event1"  # use this for IR remotes
-OUTPUT_DEVICE = "/dev/input/event4"  # unbound codes get resent to this device in exclusive mode
-
 
 EVIOCGRAB = 1074021776  # Don't mess with this
 
