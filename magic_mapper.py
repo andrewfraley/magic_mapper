@@ -5,8 +5,8 @@ import subprocess
 import json
 import fcntl
 
-BLOCK_MOUSE = False  # Set this to true to disable the mouse, note EXCLUSIVE mode must be True to work
-EXCLUSIVE_MODE = True  # Prevent bound codes from being seen by WebOS, must be True for BLOCK_MOUSE to work
+BLOCK_MOUSE = False  # Set to True to disable the mouse, note EXCLUSIVE_MODE must be True to work
+EXCLUSIVE_MODE = True  # Prevent bound codes from being seen by WebOS, must be True for BLOCK_MOUSE
 
 INPUT_DEVICE = "/dev/input/event3"  # Input device for the magic remote in bluetooth mode
 # INPUT_DEVICE = "/dev/input/event1"  # use this for IR remotes
@@ -435,7 +435,7 @@ def input_loop(button_map):
             if EXCLUSIVE_MODE and not (BLOCK_MOUSE and code == 1198):
                 os.write(output_device, event)
             if key and value == 1:
-                print("Button %s not configured in magic_mappy_conf.json" % key)
+                print("Button %s not configured in magic_mapper_conf.json" % key)
             elif value == 1:
                 print("Button code %s ignored" % code)
             continue
