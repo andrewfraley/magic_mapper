@@ -51,10 +51,14 @@ BUTTONS = {
     773: "home",
 }
 
+BLOCK_MOUSE = False  # Set this to true to disable the mouse, note EXCLUSIVE mode must be True to work
+EXCLUSIVE_MODE = True  # Prevent bound codes from being seen by WebOS, must be True for BLOCK_MOUSE to work
+
 INPUT_DEVICE = "/dev/input/event3"  # Input device for the magic remote in bluetooth mode
 # INPUT_DEVICE = "/dev/input/event1"  # use this for IR remotes
 OUTPUT_DEVICE = "/dev/input/event4"  # unbound codes get resent to this device in exclusive mode
-EXCLUSIVE_MODE = True  # Prevent bound codes from being seen by WebOS
+
+
 EVIOCGRAB = 1074021776  # Don't mess with this
 
 
@@ -415,7 +419,7 @@ def input_loop(button_map):
 
     if EXCLUSIVE_MODE:
         fcntl.ioctl(input_device, EVIOCGRAB, 1)
-        output_device = os.open("/dev/input/event4", os.O_WRONLY)
+        output_device = os.open(OUTPUT_DEVICE, os.O_WRONLY)
 
     while True:
         event = input_device.read(event_size)
@@ -427,7 +431,7 @@ def input_loop(button_map):
         mapped = key in button_map
         if not mapped:
             # If in exclusive mode, we need to send the input event back so it can be read by others
-            if EXCLUSIVE_MODE:
+            if EXCLUSIVE_MODE and not (BLOCK_MOUSE and code == 1198):
                 os.write(output_device, event)
             if key and value == 1:
                 print("Button %s not configured in magic_mappy_conf.json" % key)
