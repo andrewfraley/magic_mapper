@@ -58,6 +58,7 @@ BUTTONS = {
     1116: "tv",
     358: "info",
     773: "home",
+    28: "ok"
 }
 
 EVIOCGRAB = 1074021776  # Don't mess with this
@@ -229,6 +230,8 @@ def press_button(inputs):
     """
     button = inputs["button"]
     keycode = get_keycode(button)
+    if not keycode:
+        return
     print("Simulating keystroke with button '%s' (keycode %s)" % (button, keycode))
     send_keystroke(OUTPUT_DEVICE, keycode)
 
@@ -359,7 +362,11 @@ def show_message(message):
 def get_keycode(button):
     """Returns the keycode associated with the button name"""
     keys = [k for k, v in BUTTONS.items() if v == button]
-    return keys[0]
+    if keys:
+        return keys[0]
+
+    print('ERROR: Button "%s" not found!' % button)
+    return None
 
 
 def send_keystroke(device, keycode):
