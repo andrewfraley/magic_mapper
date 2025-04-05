@@ -61,6 +61,11 @@ BUTTONS = {
     28: "ok"
 }
 
+MOUSE_WHEEL = {
+     1: "wheel_up",
+    -1: "wheel_down"
+}
+
 EVIOCGRAB = 1074021776  # Don't mess with this
 
 
@@ -418,7 +423,7 @@ def get_webos_version():
 def input_loop(button_map):
     # Read from the input device
     # https://stackoverflow.com/a/16682549/866057
-    input_format = "llHHI"
+    input_format = "llHHi"
     event_size = struct.calcsize(input_format)
     input_device = open(INPUT_DEVICE, "rb")
     buttons_waiting = {}
@@ -432,8 +437,14 @@ def input_loop(button_map):
         (tv_sec, tv_usec, event_type, code, value) = struct.unpack(input_format, event)
 
         now = time.time()
-
-        key = BUTTONS.get(code)
+        key = None
+        if event_type == 1:
+            key = BUTTONS.get(code)
+        elif event_type == 2:
+            code = value # up/down
+            key = MOUSE_WHEEL.get(code)
+            value = 0
+            buttons_waiting[code] = now
         actions = button_map.get(key)
         if actions == "disabled":
             print("Button %s is disabled" % key)
@@ -470,7 +481,7 @@ def input_loop(button_map):
 
         # Button Down
         if value == 1:
-            print("%s button down" % BUTTONS[code])
+            print("%s button down" % key)
             if code in buttons_waiting and now - buttons_waiting[code] < 1.0:
                 print("WARNING: Got code %s DOWN while waiting for UP" % code)
             buttons_waiting[code] = now
@@ -480,9 +491,9 @@ def input_loop(button_map):
             if code not in buttons_waiting:
                 print("WARNING: Got code %s UP with no DOWN" % code)
             elif now - buttons_waiting[code] > 1.0:
-                print("Ignoring long press of %s" % BUTTONS[code])
+                print("Ignoring long press of %s" % key)
             else:
-                print("%s button up" % BUTTONS[code])
+                print("%s button up" % key)
                 print("firing event(s) for code: %s button: %s" % (code, key))
                 fire_events(actions)
             if code in buttons_waiting:
