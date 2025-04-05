@@ -26,6 +26,36 @@
       "disable_energy_savings": "True"
     }
   },
+  "guide": [
+    {
+      "function": "send_cec_button",
+      "appId": "com.webos.app.hdmi2",
+      "inputs": {
+          "code": 18882565
+      }
+    },
+    {
+      "function": "curl",
+      "appId": "com.webos.app.hdmi1",
+      "inputs": {
+          "url": "http://homeassistant.local:8123/api/webhook/lg-webos-remote-guide-button-hdmi1"
+      }
+    },
+    {
+      "function": "curl",
+      "inputs": {
+          "url": "http://homeassistant.local:8123/api/webhook/lg-webos-remote-guide-button-common"
+      }
+    },
+    {
+      "function": "curl",
+      "comment": "Special appId of '!' indicates that it would be played if no app-specific entry matched so far. This is like the 'default' in the C switch case.",
+      "appId": "!",
+      "inputs": {
+          "url": "http://homeassistant.local:8123/api/webhook/lg-webos-remote-guide-button-default"
+      }
+    }
+  ],
   "9": {
     "function": "screen_off"
   },

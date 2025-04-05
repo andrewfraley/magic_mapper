@@ -274,6 +274,8 @@ def set_dynamic_tone_mapping(inputs):
     payload = {"category": "picture", "settings": {"hdrDynamicToneMapping": value}}
     luna_send(endpoint, payload)
 
+def disabled(inputs):
+    print("Key was disabled")
 
 ###################################
 # Private Functions
@@ -289,21 +291,17 @@ def get_button_map():
     return button_map
 
 
-def fire_event(code, button_map):
+def fire_event_one(action):
     """Execute the function configured for the button"""
-    button_name = BUTTONS[code]
-    if button_name not in button_map:
-        print("Button %s not configured in magic_mapper_config.json " % button_name)
-        return
-    button = button_map[button_name]
-    if button == "disabled":
-        print("Button %s is disabled" % button_name)
-        return
-    print("firing event for code: %s button: %s" % (code, button_name))
-    func_name = button["function"]
+    func_name = action["function"]
     print("func_name: %s" % func_name)
-    inputs = button.get("inputs", {})
+    inputs = action.get("inputs", {})
     globals()[func_name](inputs)
+
+def fire_events(actions):
+    """Execute the function(s) configured for the button"""
+    for action in actions:
+        fire_event_one(action)
 
 
 def luna_send(endpoint, payload):
@@ -431,18 +429,41 @@ def input_loop(button_map):
 
     while True:
         event = input_device.read(event_size)
-        (tv_sec, tv_usec, type, code, value) = struct.unpack(input_format, event)
+        (tv_sec, tv_usec, event_type, code, value) = struct.unpack(input_format, event)
 
         now = time.time()
 
         key = BUTTONS.get(code)
-        mapped = key in button_map
-        if not mapped:
+        actions = button_map.get(key)
+        if actions == "disabled":
+            print("Button %s is disabled" % key)
+            continue
+        current_app = None
+        if actions:
+            if type(actions) is not list:
+                actions = [actions]
+            endpoint = "luna://com.webos.applicationManager/getForegroundAppInfo"
+            current_app = luna_send(endpoint, {})
+            current_app = json.loads(current_app).get('appId')
+            filtered_actions = []
+            found_match = False
+            for action in actions:
+                appId = action.get('appId')
+                if appId is None:
+                    filtered_actions += [action]
+                if appId == current_app:
+                    filtered_actions += [action]
+                    found_match = True
+                if appId == '!' and not found_match:
+                    filtered_actions += [action]
+            actions = filtered_actions
+
+        if not actions:
             # If in exclusive mode, we need to send the input event back so it can be read by others
             if EXCLUSIVE_MODE and not (BLOCK_MOUSE and code == 1198):
                 os.write(output_device, event)
             if key and value == 1:
-                print("Button %s not configured in magic_mapper_conf.json" % key)
+                print("Button %s not configured in magic_mapper_config.json" % key)
             elif value == 1:
                 print("Button code %s ignored" % code)
             continue
@@ -462,7 +483,8 @@ def input_loop(button_map):
                 print("Ignoring long press of %s" % BUTTONS[code])
             else:
                 print("%s button up" % BUTTONS[code])
-                fire_event(code, button_map)
+                print("firing event(s) for code: %s button: %s" % (code, key))
+                fire_events(actions)
             if code in buttons_waiting:
                 del buttons_waiting[code]
 
