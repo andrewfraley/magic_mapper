@@ -4,6 +4,7 @@ import struct
 import subprocess
 import json
 import fcntl
+import socket
 
 BLOCK_MOUSE = False  # Set to True to disable the mouse, note EXCLUSIVE_MODE must be True to work
 EXCLUSIVE_MODE = True  # Prevent bound codes from being seen by WebOS, must be True for BLOCK_MOUSE
@@ -274,6 +275,47 @@ def set_dynamic_tone_mapping(inputs):
     payload = {"category": "picture", "settings": {"hdrDynamicToneMapping": value}}
     luna_send(endpoint, payload)
 
+
+def send_tcp_command(inputs):
+    """Send a TCP command to a specified IP address and port.
+    Inputs:
+        ip (str): The IP address of the target device.
+        port (int): The port number of the target device.
+        command (str): The command string to send.
+        timeout (float, optional): Socket timeout in seconds. Default is 5.
+    """
+    ip = inputs.get("ip")
+    port = inputs.get("port")
+    command = inputs.get("command")
+    timeout = inputs.get("timeout", 5.0)
+
+    if not ip or not port or command is None: # command can be an empty string
+        print("ERROR: send_tcp_command called with missing ip, port, or command")
+        return
+
+    try:
+        # Ensure command is a string and ends with a newline for many TCP services
+        if not command.endswith("\r\n"):
+            command += "\r\n"
+
+        # Convert command to bytes
+        command_bytes = command.encode('utf-8')
+
+        print("Sending TCP command '%s' to %s:%s" % (command, ip, port))
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(timeout)
+        sock.connect((ip, port))
+        sock.sendall(command_bytes)
+        # Optionally, receive a response
+        # response = sock.recv(1024)
+        # print("Received response: %s" % response.decode('utf-8'))
+        sock.close()
+        print("TCP command sent successfully.")
+    except socket.error as e:
+        print("ERROR: Could not send TCP command to %s:%s - %s" % (ip, port, e))
+    except Exception as e:
+        print("ERROR: An unexpected error occurred in send_tcp_command: %s" % e)
 
 ###################################
 # Private Functions
