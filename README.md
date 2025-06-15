@@ -23,6 +23,7 @@ The script has support to do the the following (default config button):
 - [Set Dynamic Tone Mapping setting](#set_dynamic_tone_mapping)
 - [Send hdmi-cec key presses](#send_cec_button) (EXPERIMENTAL)
 - [Disable the Magic Remote mouse](#disable-mouse-experimental) (EXPERIMENTAL)
+- [Send a TCP command](#send_tcp_command) (not configured by default)
 
 ## TV Models supported (Likely any LG TV after 2018 are supported until this stops working with unknown future models)
 
@@ -348,6 +349,26 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
 
 To disable the mouse, edit the script and change `BLOCK_MOUSE = True` near the top.  This will prevent WebOS from seeing that the remote has activated its mouse.  Note that this does not disable the mouse inside the remote, but it prevents WebOS from seeing that it has been activated.  Due to the way this works there could be erratic behavior, please report any problems by [opening an issue](https://github.com/andrewfraley/magic_mapper/issues).
 
+### send_tcp_command
+
+- Sends a TCP command to a specified IP address and port.
+- Inputs:
+  - **ip** (string, default: none): The IP address of the target device.
+  - **port** (integer, default: none): The port number of the target device.
+  - **command** (string, default: none): The command string to send.
+  - **timeout** (float, optional, default: 5.0): Socket timeout in seconds.
+- Example:
+  ```json
+  "red": {
+    "function": "send_tcp_command",
+    "inputs": {
+      "ip": "192.168.1.123",
+      "port": 55443,
+      "command": "{\"id\":1,\"method\":\"toggle\",\"params\":[]}",
+      "timeout": 10
+    }
+  }
+  
 ## Button List
 
 List of known buttons and their codes. Not all remote buttons are on this list, but if needed, you can modify magic_mapper.py to add other button codes. Just run magic_mapper.py manually and it will list all button codes it sees.
