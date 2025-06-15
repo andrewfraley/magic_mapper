@@ -62,6 +62,11 @@ BUTTONS = {
     28: "ok"
 }
 
+MOUSE_WHEEL = {
+     1: "wheel_up",
+    -1: "wheel_down"
+}
+
 EVIOCGRAB = 1074021776  # Don't mess with this
 
 
@@ -275,6 +280,8 @@ def set_dynamic_tone_mapping(inputs):
     payload = {"category": "picture", "settings": {"hdrDynamicToneMapping": value}}
     luna_send(endpoint, payload)
 
+def disabled(inputs):
+    print("Key was disabled")
 
 def send_tcp_command(inputs):
     """Send a TCP command to a specified IP address and port.
@@ -331,21 +338,17 @@ def get_button_map():
     return button_map
 
 
-def fire_event(code, button_map):
+def fire_event_one(action):
     """Execute the function configured for the button"""
-    button_name = BUTTONS[code]
-    if button_name not in button_map:
-        print("Button %s not configured in magic_mapper_config.json " % button_name)
-        return
-    button = button_map[button_name]
-    if button == "disabled":
-        print("Button %s is disabled" % button_name)
-        return
-    print("firing event for code: %s button: %s" % (code, button_name))
-    func_name = button["function"]
+    func_name = action["function"]
     print("func_name: %s" % func_name)
-    inputs = button.get("inputs", {})
+    inputs = action.get("inputs", {})
     globals()[func_name](inputs)
+
+def fire_events(actions):
+    """Execute the function(s) configured for the button"""
+    for action in actions:
+        fire_event_one(action)
 
 
 def luna_send(endpoint, payload):
@@ -462,7 +465,7 @@ def get_webos_version():
 def input_loop(button_map):
     # Read from the input device
     # https://stackoverflow.com/a/16682549/866057
-    input_format = "llHHI"
+    input_format = "llHHi"
     event_size = struct.calcsize(input_format)
     input_device = open(INPUT_DEVICE, "rb")
     buttons_waiting = {}
@@ -473,25 +476,54 @@ def input_loop(button_map):
 
     while True:
         event = input_device.read(event_size)
-        (tv_sec, tv_usec, type, code, value) = struct.unpack(input_format, event)
+        (tv_sec, tv_usec, event_type, code, value) = struct.unpack(input_format, event)
 
         now = time.time()
+        key = None
+        if event_type == 1:
+            key = BUTTONS.get(code)
+        elif event_type == 2:
+            code = value # up/down
+            key = MOUSE_WHEEL.get(code)
+            value = 0
+            buttons_waiting[code] = now
+        actions = button_map.get(key)
+        if actions == "disabled":
+            print("Button %s is disabled" % key)
+            continue
+        current_app = None
+        if actions:
+            if type(actions) is not list:
+                actions = [actions]
+            endpoint = "luna://com.webos.applicationManager/getForegroundAppInfo"
+            current_app = luna_send(endpoint, {})
+            current_app = json.loads(current_app).get('appId')
+            filtered_actions = []
+            found_match = False
+            for action in actions:
+                appId = action.get('appId')
+                if appId is None:
+                    filtered_actions += [action]
+                if appId == current_app:
+                    filtered_actions += [action]
+                    found_match = True
+                if appId == '!' and not found_match:
+                    filtered_actions += [action]
+            actions = filtered_actions
 
-        key = BUTTONS.get(code)
-        mapped = key in button_map
-        if not mapped:
+        if not actions:
             # If in exclusive mode, we need to send the input event back so it can be read by others
             if EXCLUSIVE_MODE and not (BLOCK_MOUSE and code == 1198):
                 os.write(output_device, event)
             if key and value == 1:
-                print("Button %s not configured in magic_mapper_conf.json" % key)
+                print("Button %s not configured in magic_mapper_config.json" % key)
             elif value == 1:
                 print("Button code %s ignored" % code)
             continue
 
         # Button Down
         if value == 1:
-            print("%s button down" % BUTTONS[code])
+            print("%s button down" % key)
             if code in buttons_waiting and now - buttons_waiting[code] < 1.0:
                 print("WARNING: Got code %s DOWN while waiting for UP" % code)
             buttons_waiting[code] = now
@@ -501,10 +533,11 @@ def input_loop(button_map):
             if code not in buttons_waiting:
                 print("WARNING: Got code %s UP with no DOWN" % code)
             elif now - buttons_waiting[code] > 1.0:
-                print("Ignoring long press of %s" % BUTTONS[code])
+                print("Ignoring long press of %s" % key)
             else:
-                print("%s button up" % BUTTONS[code])
-                fire_event(code, button_map)
+                print("%s button up" % key)
+                print("firing event(s) for code: %s button: %s" % (code, key))
+                fire_events(actions)
             if code in buttons_waiting:
                 del buttons_waiting[code]
 

@@ -66,10 +66,57 @@ Buttons are configured via the magic_mapper_config.json file. magic_mapper_confi
 ```
 "yellow": {  # The name of the button to remap, see the Button List below
   "function": "cycle_energy_mode",   # The matching function to execute in magic_mapper.py - see Function List below
+  "appId": "com.webos.app.hdmi1",    # (OPTIONAL) Limit the mapping to a specific application in the foreground. (HDMI1 input in this example.)
   "inputs": {                        # The input dict to send to the function, different functions use different inputs, see the Function List below
     "reverse_order": false,
     "notifications": true
   }
+}
+```
+The map for a button can be a dictionary (as mentioned above), or a list of dictionaries. e.g.
+```
+    "guide": [
+        {
+            # If the foreground app is HDMI2, send the cec code for EPG
+            "function": "send_cec_button",
+            "appId": "com.webos.app.hdmi2",
+            "inputs": {
+                "code": 18882565
+            }
+        },
+        {
+            # If the foreground app is HDMI1, call the webhoook via curl
+            "function": "curl",
+            "appId": "com.webos.app.hdmi1",
+            "inputs": {
+                "url": "http://homeassistant.local:8123/api/webhook/lg-webos-remote-guide-button-hdmi1"
+            }
+        },
+        {
+            # Independent of the foreground app. This is always executed.
+            "function": "curl",
+            "inputs": {
+                "url": "http://homeassistant.local:8123/api/webhook/lg-webos-remote-guide-button-generic"
+            }
+        },
+        {
+            # Special appId of '!' indicates that this map would be played if no foreground-app-specific entry matched so far.
+            # This is like the 'default' in the C switch case.
+            # Keep this entry/entries after all the app-specific entries.
+            "function": "curl",
+            "appId": "!",
+            "inputs": {
+                "url": "http://homeassistant.local:8123/api/webhook/lg-webos-remote-guide-button-default"
+            }
+        }
+    ],
+```
+The dictionary approach can be used to perform more than one operations in response to the keypress.
+If none of the entries matched because of the appId restriction, the keypress will be passed to the os. If you want to block it for other non-matching apps, add an entry like below:
+```
+{
+    "function": "disabled",
+    "appId": "!"
 }
 ```
 
@@ -333,6 +380,7 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
       "inputs": {
         "code": 18882561
       }
+
     }
   ```
 - Known Codes:
@@ -341,6 +389,8 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
   - 16777345 Stop
   - 16777413 Reverse
   - 16777474 Fast Forward
+  - 18882563 Input select
+  - 18882565 TV guide
   - 18882566 Menu
   - 18882561 Home
   - 18882560 Power
