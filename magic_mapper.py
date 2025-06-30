@@ -492,6 +492,8 @@ def input_loop(button_map):
                 print("WARNING: Got code %s UP with no DOWN" % code)
             elif now - buttons_waiting[code] > 1.0:
                 print("Ignoring long press of %s" % key)
+                # Tell the user that the long press was blocked because of magic mapper; to avoid any confusion.
+                luna_send("luna://com.webos.notification/createToast", {"sourceId":"magic mapper","message":"long press for %s is disabled due to magic mapper" % key})
             else:
                 print("%s button up" % key)
                 print("firing event(s) for code: %s button: %s" % (code, key))
