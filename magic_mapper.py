@@ -471,10 +471,24 @@ def input_loop(button_map):
     buttons_waiting = {}
 
     if EXCLUSIVE_MODE:
+        print("EXCLUSIVE_MODE is enabled, taking over input device")
         fcntl.ioctl(input_device, EVIOCGRAB, 1)
         output_device = os.open(OUTPUT_DEVICE, os.O_WRONLY)
+    else:
+        print("EXCLUSIVE_MODE is disabled, will not override default button behavior")
+        output_device = None
 
+    first_loop = 2
     while True:
+
+        if first_loop == 1:
+            print("First loop complete, Magic Mapper is running")
+            first_loop = 0
+        elif first_loop == 2:
+            print("Input loop started, waiting for button presses")
+            first_loop = 1
+
+
         event = input_device.read(event_size)
         (tv_sec, tv_usec, event_type, code, value) = struct.unpack(input_format, event)
 
@@ -544,9 +558,16 @@ def input_loop(button_map):
 
 def main():
     """MAIN"""
+    print("Starting Magic Mapper")
+    time.sleep(2) # Ensure everything is running before we start
     button_map = get_button_map()
+
     global WEBOS_MAJOR_VERSION
     WEBOS_MAJOR_VERSION = get_webos_version()
+    print("WEBOS_MAJOR_VERSION: %s" % WEBOS_MAJOR_VERSION)
+
+    print("BLOCK_MOUSE is %s" % BLOCK_MOUSE)
+
     input_loop(button_map=button_map)
 
 
