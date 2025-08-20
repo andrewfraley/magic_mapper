@@ -544,6 +544,7 @@ def input_loop(button_map):
 
 def main():
     """MAIN"""
+    time.sleep(2) # Ensure everything is running before we start
     button_map = get_button_map()
     global WEBOS_MAJOR_VERSION
     WEBOS_MAJOR_VERSION = get_webos_version()
