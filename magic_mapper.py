@@ -1,16 +1,24 @@
-import time
 import os
+import re
+import time
 import struct
 import subprocess
 import json
 import fcntl
-import socket
+
+# We need the socket library for send_tcp_command(), but this isn't always installed in WebOS
+try:
+    import socket
+    SOCKET_AVAILABLE = True
+except ImportError:
+    SOCKET_AVAILABLE = False
 
 BLOCK_MOUSE = False  # Set to True to disable the mouse, note EXCLUSIVE_MODE must be True to work
 EXCLUSIVE_MODE = True  # Prevent bound codes from being seen by WebOS, must be True for BLOCK_MOUSE
 
-INPUT_DEVICE = "/dev/input/event3"  # Input device for the magic remote in bluetooth mode
-# INPUT_DEVICE = "/dev/input/event1"  # use this for IR remotes
+DEVICE_NAME = 'LGE M-RCU - Builtin [0]'   # the exact Name= shown in /proc/bus/input/devices
+# DEVICE_NAME = 'LGE M-RCU - Builtin [1]'   # UNTESTED - Try this for IR remotes
+
 
 OUTPUT_DEVICE = "/dev/input/event4"  # unbound codes get resent to this device in exclusive mode
 
@@ -291,6 +299,10 @@ def send_tcp_command(inputs):
         command (str): The command string to send.
         timeout (float, optional): Socket timeout in seconds. Default is 5.
     """
+    if not SOCKET_AVAILABLE:
+        print("ERROR: socket library is not available, cannot use send_tcp_command()")
+        return
+
     ip = inputs.get("ip")
     port = inputs.get("port")
     command = inputs.get("command")
@@ -467,14 +479,31 @@ def input_loop(button_map):
     # https://stackoverflow.com/a/16682549/866057
     input_format = "llHHi"
     event_size = struct.calcsize(input_format)
-    input_device = open(INPUT_DEVICE, "rb")
     buttons_waiting = {}
 
+    input_device_path = resolve_input_device_by_name(DEVICE_NAME)
+    print("Opening input device: %s" % input_device_path)
+    input_device = open(input_device_path, "rb")
+
     if EXCLUSIVE_MODE:
+        print("EXCLUSIVE_MODE is enabled, taking over input device")
         fcntl.ioctl(input_device, EVIOCGRAB, 1)
         output_device = os.open(OUTPUT_DEVICE, os.O_WRONLY)
+    else:
+        print("EXCLUSIVE_MODE is disabled, will not override default button behavior")
+        output_device = None
 
+    first_loop = 2
     while True:
+
+        if first_loop == 1:
+            print("First loop complete, Magic Mapper is running")
+            first_loop = 0
+        elif first_loop == 2:
+            print("Input loop started, waiting for button presses")
+            first_loop = 1
+
+
         event = input_device.read(event_size)
         (tv_sec, tv_usec, event_type, code, value) = struct.unpack(input_format, event)
 
@@ -542,11 +571,57 @@ def input_loop(button_map):
                 del buttons_waiting[code]
 
 
+def resolve_input_device_by_name(device_name):
+    """
+    Find the input device path by looking for the device_name in /proc/bus/input/devices
+    """
+    print("Resolving input device path for device named '%s'" % device_name)
+    try:
+        with open("/proc/bus/input/devices", "r") as f:
+            data = f.read()
+    except Exception as e:
+        print("ERROR: cannot read /proc/bus/input/devices: %s" % e)
+        return None
+
+    # Split on blank lines; each block describes one device
+    blocks = re.split(r"\n\s*\n", data.strip())
+    for block in blocks:
+        # Look for N: Name="..."
+        m_name = re.search(r'^N:\s+Name="([^"]+)"', block, flags=re.M)
+        if not m_name:
+            continue
+        if m_name.group(1) != device_name:
+            continue
+
+        # Found our device; look for H: Handlers=...
+        m_handlers = re.search(r'^H:\s+Handlers=([^\n]+)', block, flags=re.M)
+        if not m_handlers:
+            continue
+
+        handlers = m_handlers.group(1).split()
+        # pick the first 'eventX'
+        for h in handlers:
+            if h.startswith("event") and h[5:].isdigit():
+                event_path = "/dev/input/" + h
+                print("Resolved '%s' to %s" % (device_name, event_path))
+                return event_path
+
+    print("WARNING: device named '%s' not found in /proc/bus/input/devices" % device_name)
+    return None
+
+
 def main():
     """MAIN"""
+    print("Starting Magic Mapper")
+    time.sleep(2) # Ensure everything is running before we start
     button_map = get_button_map()
+
     global WEBOS_MAJOR_VERSION
     WEBOS_MAJOR_VERSION = get_webos_version()
+    print("WEBOS_MAJOR_VERSION: %s" % WEBOS_MAJOR_VERSION)
+
+    print("BLOCK_MOUSE is %s" % BLOCK_MOUSE)
+
     input_loop(button_map=button_map)
 
 
