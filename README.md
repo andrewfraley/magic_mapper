@@ -23,6 +23,7 @@ The script has support to do the the following (default config button):
 - [Set Dynamic Tone Mapping setting](#set_dynamic_tone_mapping)
 - [Send hdmi-cec key presses](#send_cec_button) (EXPERIMENTAL)
 - [Disable the Magic Remote mouse](#disable-mouse-experimental) (EXPERIMENTAL)
+- [Send a TCP command](#send_tcp_command) (not configured by default)
 
 ## TV Models supported (Likely any LG TV after 2018 are supported until this stops working with unknown future models)
 
@@ -36,7 +37,6 @@ The script has support to do the the following (default config button):
 - Some buttons automatically activate the mouse, you can [disable the mouse](#disable-mouse-experimental) to avoid this, but this will disable the mouse completely.
 - If a button has a long press function (ie 0-9), and it's configured in magic_mapper_config.json, long pressing the button will no longer work.
 - This script attempts to take exclusive control of the remote's input device; this could have unknown unintended consequences. If weird things start happening, edit the script and set `EXCLUSIVE_MODE = False` near the top. Note that with exclusive mode disabled, a button's default behavior will not be blocked, which means you will not be able to ovveride app buttons or buttons such as "guide".
-- To use with an IR remote, change `INPUT_DEVICE = "/dev/input/event1"`. To use with both the magic remote and IR remote, run two copies of this script with different `INPUT_DEVICE` settings.
 
 ## Installation / Setup
 
@@ -397,6 +397,26 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
 ### Disable Mouse (Experimental)
 
 To disable the mouse, edit the script and change `BLOCK_MOUSE = True` near the top.  This will prevent WebOS from seeing that the remote has activated its mouse.  Note that this does not disable the mouse inside the remote, but it prevents WebOS from seeing that it has been activated.  Due to the way this works there could be erratic behavior, please report any problems by [opening an issue](https://github.com/andrewfraley/magic_mapper/issues).
+
+### send_tcp_command
+
+- Sends a TCP command to a specified IP address and port.
+- Inputs:
+  - **ip** (string, default: none): The IP address of the target device.
+  - **port** (integer, default: none): The port number of the target device.
+  - **command** (string, default: none): The command string to send.
+  - **timeout** (float, optional, default: 5.0): Socket timeout in seconds.
+- Example:
+  ```json
+  "red": {
+    "function": "send_tcp_command",
+    "inputs": {
+      "ip": "192.168.1.123",
+      "port": 55443,
+      "command": "{\"id\":1,\"method\":\"toggle\",\"params\":[]}",
+      "timeout": 10
+    }
+  }
 
 ## Button List
 
