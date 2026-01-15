@@ -1,3 +1,22 @@
+"""
+Magic Mapper V2.0 (work in progress)
+Added soft and hard reboot.
+Added short and longpress in configuration
+
+Example:
+  "guide": [
+    {
+      "comment": "A short press on this button will trigger a soft reboot.",
+      "function": "soft_reboot"
+    },
+    {
+      "comment": "A long press will trigger a hard reboot (cleaning snapshots first).",
+      "function": "hard_reboot",
+      "longpress": true
+    }
+  ]
+  
+"""
 import os
 import re
 import time
@@ -336,6 +355,28 @@ def send_tcp_command(inputs):
     except Exception as e:
         print("ERROR: An unexpected error occurred in send_tcp_command: %s" % e)
 
+def soft_reboot(inputs):
+    """Reboots the TV keeping the snapshots."""
+    endpoint = "luna://com.webos.service.tvpower/power/reboot"
+    payload = {"reason": "swDownload"}
+    luna_send(endpoint, payload)
+
+def hard_reboot(inputs):
+    """Cleans the snapshots and then reboots the TV (WebOS Logo will show up)."""
+    try:
+        print("Running snapshot-boot-manager -x")
+        subprocess.check_output(["snapshot-boot-manager", "-x"])
+    except subprocess.CalledProcessError as error:
+        print("WARNING: snapshot-boot-manager command failed")
+        print(error)
+        return
+    except OSError as e:
+        print("ERROR: snapshot-boot-manager command not found: %s" % e)
+        return
+
+    # Call soft_reboot to perform the actual reboot
+    soft_reboot(inputs)
+
 ###################################
 # Private Functions
 # The fuctions below here should not be called by magic_mapper_config.json
@@ -561,17 +602,36 @@ def input_loop(button_map):
         if value == 0:
             if code not in buttons_waiting:
                 print("WARNING: Got code %s UP with no DOWN" % code)
-            elif now - buttons_waiting[code] > 1.0:
-                print("Ignoring long press of %s" % key)
-                # Tell the user that the long press was blocked because of magic mapper; to avoid any confusion.
-                luna_send("luna://com.webos.notification/createToast", {"sourceId":"magic mapper","message":"long press for %s is disabled due to magic mapper" % key})
+                continue
+
+            press_duration = now - buttons_waiting[code]
+            is_long_press = press_duration > 1.0
+
+            actions_to_fire = []
+            for action in actions:
+                # Default to short press if 'longpress' is not defined
+                is_longpress_action = action.get("longpress", False)
+
+                if is_longpress_action and is_long_press:
+                    # Config wants a long press, and we detected a long press
+                    print("Long press detected for '%s', matched long-press action." % key)
+                    actions_to_fire.append(action)
+                elif not is_longpress_action and not is_long_press:
+                    # Config wants a short press, and we detected a short press
+                    print("Short press detected for '%s', matched short-press action." % key)
+                    actions_to_fire.append(action)
+
+            if actions_to_fire:
+                fire_events(actions_to_fire)
             else:
-                print("%s button up" % key)
-                print("firing event(s) for code: %s button: %s" % (code, key))
-                fire_events(actions)
+                if is_long_press:
+                     print("Ignoring long press of %s, no long-press action configured." % key)
+                else:
+                     print("Ignoring short press of %s, no short-press action configured." % key)
+
+
             if code in buttons_waiting:
                 del buttons_waiting[code]
-
 
 def resolve_input_device_by_name(device_name):
     """
