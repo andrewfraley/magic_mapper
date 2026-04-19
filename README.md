@@ -127,6 +127,20 @@ Use this to completely disable a button. Note this will not work if `EXCLUSIVE_M
 "netflix": "disabled"
 ```
 
+## Repeating a button action
+
+Set `"repeat": true` on an action to fire it on the initial press and on each auto-repeat while the button is held down (instead of once on release). This works around the long-press-to-mute behavior on newer LG Magic Remotes: by remapping `vol_down` to send itself with `"repeat": true`, holding the button keeps lowering the volume instead of muting.
+
+```
+"vol_down": {
+  "function": "press_button",
+  "inputs": {
+    "button": "vol_down"
+  },
+  "repeat": true
+}
+```
+
 ## Overriding App Buttons
 
 If you wanted to replace the Amazon Prime button with Plex:

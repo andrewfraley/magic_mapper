@@ -21,6 +21,7 @@ DEVICE_NAME = 'LGE M-RCU - Builtin [0]'   # the exact Name= shown in /proc/bus/i
 
 
 OUTPUT_DEVICE = "/dev/input/event4"  # unbound codes get resent to this device in exclusive mode
+output_device_fd = None  # opened at runtime in input_loop
 
 
 BUTTONS = {
@@ -67,7 +68,10 @@ BUTTONS = {
     1116: "tv",
     358: "info",
     773: "home",
-    28: "ok"
+    28: "ok",
+    241: "inputs",
+    1023: "hub",
+    1044: "rakuten"
 }
 
 MOUSE_WHEEL = {
@@ -247,7 +251,7 @@ def press_button(inputs):
     if not keycode:
         return
     print("Simulating keystroke with button '%s' (keycode %s)" % (button, keycode))
-    send_keystroke(OUTPUT_DEVICE, keycode)
+    send_keystroke(keycode)
 
 
 def send_cec_button(inputs):
@@ -426,25 +430,24 @@ def get_keycode(button):
     return None
 
 
-def send_keystroke(device, keycode):
+def send_keystroke(keycode):
     """Send a keystroke to the input device
         We use this to simulate button presses like play/pause since those require special handling
         Use the press_button function for magic_mapper_config.json
     };
     """
-    send_input_event(device, keycode, 1, 1)
-    send_input_event(device, 0, 0, 0)
-    send_input_event(device, keycode, 0, 1)
-    send_input_event(device, 0, 0, 0)
+    send_input_event(keycode, 1, 1)
+    send_input_event(0, 0, 0)
+    send_input_event(keycode, 0, 1)
+    send_input_event(0, 0, 0)
 
 
-def send_input_event(device, keycode, value, event_type):
+def send_input_event(keycode, value, event_type):
     """Low level function to write to the input device file
     Don't call this from magic_mapper_config.json
     """
     input_format = "llHHI"
 
-    out_file = os.open(device, os.O_RDWR)
     now = time.time()
     tv_sec = int(now)
     tv_usec = int((now - tv_sec) * 1000000)
@@ -453,8 +456,7 @@ def send_input_event(device, keycode, value, event_type):
     # print("writing: %s" % data)
 
     event = struct.pack(input_format, *data)
-    os.write(out_file, event)
-    os.close(out_file)
+    os.write(output_device_fd, event)
 
 
 def str_to_bool(string):
@@ -485,13 +487,13 @@ def input_loop(button_map):
     print("Opening input device: %s" % input_device_path)
     input_device = open(input_device_path, "rb")
 
+    global output_device_fd
+    output_device_fd = os.open(OUTPUT_DEVICE, os.O_WRONLY)
     if EXCLUSIVE_MODE:
         print("EXCLUSIVE_MODE is enabled, taking over input device")
         fcntl.ioctl(input_device, EVIOCGRAB, 1)
-        output_device = os.open(OUTPUT_DEVICE, os.O_WRONLY)
     else:
         print("EXCLUSIVE_MODE is disabled, will not override default button behavior")
-        output_device = None
 
     first_loop = 2
     while True:
@@ -520,55 +522,71 @@ def input_loop(button_map):
         if actions == "disabled":
             print("Button %s is disabled" % key)
             continue
-        current_app = None
         if actions:
             if type(actions) is not list:
                 actions = [actions]
-            endpoint = "luna://com.webos.applicationManager/getForegroundAppInfo"
-            current_app = luna_send(endpoint, {})
-            current_app = json.loads(current_app).get('appId')
-            filtered_actions = []
-            found_match = False
-            for action in actions:
-                appId = action.get('appId')
-                if appId is None:
-                    filtered_actions += [action]
-                if appId == current_app:
-                    filtered_actions += [action]
-                    found_match = True
-                if appId == '!' and not found_match:
-                    filtered_actions += [action]
-            actions = filtered_actions
+            # Only check foreground app if any action has an appId filter
+            if any(a.get('appId') for a in actions):
+                endpoint = "luna://com.webos.applicationManager/getForegroundAppInfo"
+                current_app = luna_send(endpoint, {})
+                current_app = json.loads(current_app).get('appId')
+                filtered_actions = []
+                found_match = False
+                for action in actions:
+                    appId = action.get('appId')
+                    if appId is None:
+                        filtered_actions += [action]
+                    if appId == current_app:
+                        filtered_actions += [action]
+                        found_match = True
+                    if appId == '!' and not found_match:
+                        filtered_actions += [action]
+                actions = filtered_actions
 
         if not actions:
             # If in exclusive mode, we need to send the input event back so it can be read by others
             if EXCLUSIVE_MODE and not (BLOCK_MOUSE and code == 1198):
-                os.write(output_device, event)
+                os.write(output_device_fd, event)
             if key and value == 1:
                 print("Button %s not configured in magic_mapper_config.json" % key)
             elif value == 1:
                 print("Button code %s ignored" % code)
             continue
 
+        repeat_enabled = any(a.get("repeat") for a in actions)
+
         # Button Down
         if value == 1:
             print("%s button down" % key)
+            if repeat_enabled and not all(a.get("repeat") for a in actions):
+                print("WARNING: %s has mixed repeat/non-repeat actions, treating all as repeat" % key)
             if code in buttons_waiting and now - buttons_waiting[code] < 1.0:
                 print("WARNING: Got code %s DOWN while waiting for UP" % code)
             buttons_waiting[code] = now
+            if repeat_enabled:
+                print("firing event(s) for code: %s button: %s" % (code, key))
+                fire_events(actions)
+
+        # Button Repeat
+        if value == 2 and repeat_enabled:
+            print("%s button repeat" % key)
+            print("firing event(s) for code: %s button: %s" % (code, key))
+            fire_events(actions)
 
         # Button Up
         if value == 0:
             if code not in buttons_waiting:
                 print("WARNING: Got code %s UP with no DOWN" % code)
             elif now - buttons_waiting[code] > 1.0:
-                print("Ignoring long press of %s" % key)
-                # Tell the user that the long press was blocked because of magic mapper; to avoid any confusion.
-                luna_send("luna://com.webos.notification/createToast", {"sourceId":"magic mapper","message":"long press for %s is disabled due to magic mapper" % key})
+                if not repeat_enabled:
+                    print("Ignoring long press of %s" % key)
+                    # Tell the user that the long press was blocked because of magic mapper; to avoid any confusion.
+                    luna_send("luna://com.webos.notification/createToast", {"sourceId":"magic mapper","message":"long press for %s is disabled due to magic mapper" % key})
             else:
                 print("%s button up" % key)
-                print("firing event(s) for code: %s button: %s" % (code, key))
-                fire_events(actions)
+                if not repeat_enabled:
+                    print("firing event(s) for code: %s button: %s" % (code, key))
+                    fire_events(actions)
             if code in buttons_waiting:
                 del buttons_waiting[code]
 
