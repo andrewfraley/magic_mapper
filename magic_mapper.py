@@ -52,6 +52,7 @@ BUTTONS = {
     1037: "netflix",
     1042: "disney",
     1043: "lg_channels",
+    1044: "rakuten",
     1086: "alexa",
     1117: "google",
     362: "guide",
