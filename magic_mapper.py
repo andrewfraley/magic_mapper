@@ -336,6 +336,10 @@ def send_tcp_command(inputs):
     except Exception as e:
         print("ERROR: An unexpected error occurred in send_tcp_command: %s" % e)
 
+def toggle_piccap(inputs):
+    command = 'if /usr/bin/luna-send -n 1 \'luna://org.webosbrew.piccap.service/status\' \'{}\' | grep \'"isRunning":true\'; then /usr/bin/luna-send -n 1 \'luna://org.webosbrew.piccap.service/stop\' \'{}\' ; else /usr/bin/luna-send -n 1 \'luna://org.webosbrew.piccap.service/start\' \'{}\' ; fi'
+    os.popen(command)
+
 ###################################
 # Private Functions
 # The fuctions below here should not be called by magic_mapper_config.json
