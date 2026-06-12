@@ -339,8 +339,19 @@ def send_tcp_command(inputs):
         print("ERROR: An unexpected error occurred in send_tcp_command: %s" % e)
 
 def toggle_piccap(inputs):
-    command = 'if /usr/bin/luna-send -n 1 \'luna://org.webosbrew.piccap.service/status\' \'{}\' | grep \'"isRunning":true\'; then /usr/bin/luna-send -n 1 \'luna://org.webosbrew.piccap.service/stop\' \'{}\' ; else /usr/bin/luna-send -n 1 \'luna://org.webosbrew.piccap.service/start\' \'{}\' ; fi'
-    os.popen(command)
+    piccap_service = "luna://org.webosbrew.piccap.service"
+    status = luna_send("%s/status" % piccap_service, {})
+    status = json.loads(status)
+
+    if status.get("isRunning"):
+        action = "stopped"
+        endpoint = "%s/stop" % piccap_service
+    else:
+        action = "started"
+        endpoint = "%s/start" % piccap_service
+
+    luna_send(endpoint, {})
+    print("PicCap service %s" % action)
 
 ###################################
 # Private Functions

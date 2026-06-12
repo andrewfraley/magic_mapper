@@ -465,6 +465,7 @@ Note that long presses (longer than 1s) are ignored. I will eventually add suppo
  "netflix"
  "disney"
  "lg_channels"
+ "rakuten"
  "alexa"
  "google"
  "guide"
