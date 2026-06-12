@@ -24,6 +24,7 @@ The script has support to do the the following (default config button):
 - [Send hdmi-cec key presses](#send_cec_button) (EXPERIMENTAL)
 - [Disable the Magic Remote mouse](#disable-mouse-experimental) (EXPERIMENTAL)
 - [Send a TCP command](#send_tcp_command) (not configured by default)
+- [Toggle PicCap](#toggle_piccap) (not configured by default)
 
 ## TV Models supported (Likely any LG TV after 2018 are supported until this stops working with unknown future models)
 
@@ -417,6 +418,18 @@ To disable the mouse, edit the script and change `BLOCK_MOUSE = True` near the t
       "timeout": 10
     }
   }
+  ```
+
+### toggle_piccap
+
+- Toggles the WebOSBrew PicCap service on or off. This requires PicCap to be installed.
+- Inputs: None
+- Example:
+  ```
+  "blue": {
+    "function": "toggle_piccap"
+  }
+  ```
 
 ## Button List
 
