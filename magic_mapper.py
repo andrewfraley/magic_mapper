@@ -20,7 +20,7 @@ DEVICE_NAME = 'LGE M-RCU - Builtin [0]'   # the exact Name= shown in /proc/bus/i
 # DEVICE_NAME = 'LGE M-RCU - Builtin [1]'   # UNTESTED - Try this for IR remotes
 
 
-OUTPUT_DEVICE = "/dev/input/event4"  # unbound codes get resent to this device in exclusive mode
+OUTPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [2]'  # unbound codes get resent to this device in exclusive mode
 
 
 BUTTONS = {
@@ -53,6 +53,7 @@ BUTTONS = {
     1037: "netflix",
     1042: "disney",
     1043: "lg_channels",
+    1044: "rakuten",
     1086: "alexa",
     1117: "google",
     362: "guide",
@@ -255,8 +256,9 @@ def press_button(inputs):
     keycode = get_keycode(button)
     if not keycode:
         return
-    print("Simulating keystroke with button '%s' (keycode %s)" % (button, keycode))
-    send_keystroke(OUTPUT_DEVICE, keycode)
+    output_device_path = resolve_input_device_by_name(OUTPUT_DEVICE_NAME)
+    print("Simulating keystroke with button '%s' (keycode %s). Output device: %s" % (button, keycode, output_device_path))
+    send_keystroke(output_device_path, keycode)
 
 
 def send_cec_button(inputs):
@@ -344,6 +346,21 @@ def send_tcp_command(inputs):
         print("ERROR: Could not send TCP command to %s:%s - %s" % (ip, port, e))
     except Exception as e:
         print("ERROR: An unexpected error occurred in send_tcp_command: %s" % e)
+
+def toggle_piccap(inputs):
+    piccap_service = "luna://org.webosbrew.piccap.service"
+    status = luna_send("%s/status" % piccap_service, {})
+    status = json.loads(status)
+
+    if status.get("isRunning"):
+        action = "stopped"
+        endpoint = "%s/stop" % piccap_service
+    else:
+        action = "started"
+        endpoint = "%s/start" % piccap_service
+
+    luna_send(endpoint, {})
+    print("PicCap service %s" % action)
 
 ###################################
 # Private Functions
@@ -499,7 +516,9 @@ def input_loop(button_map):
     if EXCLUSIVE_MODE:
         print("EXCLUSIVE_MODE is enabled, taking over input device")
         fcntl.ioctl(input_device, EVIOCGRAB, 1)
-        output_device = os.open(OUTPUT_DEVICE, os.O_WRONLY)
+        output_device_path = resolve_input_device_by_name(OUTPUT_DEVICE_NAME)
+        print("Keys will be resent to: %s" % output_device_path)
+        output_device = os.open(output_device_path, os.O_WRONLY)
     else:
         print("EXCLUSIVE_MODE is disabled, will not override default button behavior")
         output_device = None
