@@ -49,6 +49,7 @@ BUTTONS = {
     10: "9",
     11: "0",
     1038: "prime",
+    1107: "sling",
     1037: "netflix",
     1042: "disney",
     1043: "lg_channels",
@@ -165,11 +166,18 @@ def set_oled_backlight(inputs):
 
 def launch_app(inputs):
     """Launch an app by app_id
-    Inputs: app_id  - Use list_apps.py to get the app_id
+    Inputs:
+        app_id - Use list_apps.py to get the app_id
+        params (optional) - dict of launch params passed to the app.
+            For the browser (com.webos.app.browser) use {"target": "https://..."}
+            to open a specific URL.
     """
     app_id = inputs["app_id"]
     endpoint = "luna://com.webos.service.applicationmanager/launch"
     payload = {"id": app_id}
+    params = inputs.get("params")
+    if params:
+        payload["params"] = params
     luna_send(endpoint, payload)
 
 
@@ -214,8 +222,9 @@ def curl(inputs):
             for header in headers:
                 command.append("-H")
                 command.append(header)
-        elif type(headers) != str:  # Python 2.7 on the C9 returns unicode instead of str
-            headers = str(headers)
+        else:
+            if type(headers) != str:  # Python 2.7 on the C9 returns unicode instead of str
+                headers = str(headers)
             command.append("-H")
             command.append(headers)
 
@@ -457,9 +466,11 @@ def send_input_event(device, keycode, value, event_type):
     os.close(out_file)
 
 
-def str_to_bool(string):
-    """Convert string to bool"""
-    if string.lower() in ["yes", "true"]:
+def str_to_bool(value):
+    """Convert a config value to bool. Accepts bools and strings."""
+    if isinstance(value, bool):
+        return value
+    if str(value).lower() in ["yes", "true"]:
         return True
     return False
 
