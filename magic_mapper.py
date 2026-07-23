@@ -391,6 +391,25 @@ def fire_events(actions):
 
 def luna_send(endpoint, payload):
     # Execute luna send and return the output
+    #
+    # webOS 10.x (Rockhopper) regression: `luna-send -n 1` is a silent no-op --
+    # it neither prints a response nor actually delivers the message, so every
+    # bound button would appear to do nothing. Verified A/B on an OLED65C4PUA
+    # (webOS 10.3.1): an identical launch call fires with `-t 1` and does nothing
+    # with `-n 1`. `-t 1` delivers exactly once (it means "time 1 iteration"),
+    # but the response payload comes back on STDERR behind a
+    # "timingServiceResponse" line, so the callers that json.loads() this need it
+    # recovered from there.
+    #
+    # Gated on version so pre-10 devices keep the exact original code path.
+    if WEBOS_MAJOR_VERSION >= 10:
+        command = ["/usr/bin/luna-send", "-t", "1", endpoint, json.dumps(payload)]
+        print("running command: %s" % command)
+        proc = subprocess.run(command, capture_output=True)
+        for line in proc.stderr.decode("utf-8", "replace").splitlines():
+            if "timingServiceResponse" in line and "{" in line:
+                return line[line.find("{"):]
+        return proc.stdout.decode("utf-8", "replace")
 
     command = ["/usr/bin/luna-send", "-n", "1"]
     command.append(endpoint)
