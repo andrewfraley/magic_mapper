@@ -5,6 +5,16 @@ import struct
 import subprocess
 import json
 import fcntl
+import argparse
+import select
+import signal
+
+from magic_mapper_runtime import (
+    DiscoveryController,
+    RUNTIME_VERSION,
+    atomic_write_json,
+    config_digest,
+)
 
 # We need the socket library for send_tcp_command(), but this isn't always installed in WebOS
 try:
@@ -78,6 +88,11 @@ MOUSE_WHEEL = {
 }
 
 EVIOCGRAB = 1074021776  # Don't mess with this
+
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), "magic_mapper_config.json")
+STATE_DIR = "/tmp/magic-mapper"
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+STOP_REQUESTED = False
 
 
 def cycle_energy_mode(inputs):
@@ -370,8 +385,7 @@ def toggle_piccap(inputs):
 
 def get_button_map():
     """Read the json config file"""
-    config_path = os.path.join(os.path.dirname(__file__), "magic_mapper_config.json")
-    with open(config_path) as config_file:
+    with open(CONFIG_PATH) as config_file:
         button_map = json.load(config_file)
     return button_map
 
@@ -521,16 +535,46 @@ def get_webos_version():
     return int(major_version)
 
 
+def write_status(active, button_map, input_device=None, output_device=None, discovery=None, error=None):
+    status = {
+        "active": active,
+        "pid": os.getpid() if active else None,
+        "version": RUNTIME_VERSION,
+        "configDigest": config_digest(button_map),
+        "inputDevice": input_device,
+        "outputDevice": output_device,
+        "exclusive": EXCLUSIVE_MODE,
+        "updatedAt": int(time.time()),
+    }
+    if discovery:
+        status["discovery"] = discovery.state()
+    if error:
+        status["error"] = str(error)
+    atomic_write_json(os.path.join(STATE_DIR, "status.json"), status)
+
+
+def request_stop(signum, frame):
+    del signum, frame
+    global STOP_REQUESTED
+    STOP_REQUESTED = True
+
+
 def input_loop(button_map):
     # Read from the input device
     # https://stackoverflow.com/a/16682549/866057
     input_format = "llHHi"
     event_size = struct.calcsize(input_format)
     buttons_waiting = {}
+    pressed_codes = set()
+    discovery = DiscoveryController(
+        os.path.join(STATE_DIR, "discover-request.json"),
+        os.path.join(STATE_DIR, "discover-result.json"),
+    )
 
     input_device_path = resolve_input_device_by_name(DEVICE_NAME)
     print("Opening input device: %s" % input_device_path)
     input_device = open(input_device_path, "rb")
+    output_device_path = None
 
     if EXCLUSIVE_MODE:
         print("EXCLUSIVE_MODE is enabled, taking over input device")
@@ -542,84 +586,122 @@ def input_loop(button_map):
         print("EXCLUSIVE_MODE is disabled, will not override default button behavior")
         output_device = None
 
+    write_status(True, button_map, input_device_path, output_device_path, discovery)
     first_loop = 2
-    while True:
+    last_status = 0
+    try:
+        while not STOP_REQUESTED:
+            if first_loop == 1:
+                print("First loop complete, Magic Mapper is running")
+                first_loop = 0
+            elif first_loop == 2:
+                print("Input loop started, waiting for button presses")
+                first_loop = 1
 
-        if first_loop == 1:
-            print("First loop complete, Magic Mapper is running")
-            first_loop = 0
-        elif first_loop == 2:
-            print("Input loop started, waiting for button presses")
-            first_loop = 1
+            now = time.time()
+            discovery.poll(pressed_codes, now)
+            if now - last_status >= 2:
+                write_status(True, button_map, input_device_path, output_device_path, discovery)
+                last_status = now
+            if APP_DIR and not os.path.isdir(APP_DIR):
+                print("Application directory was removed, exiting")
+                break
 
+            readable, unused_write, unused_error = select.select([input_device], [], [], 0.25)
+            del unused_write, unused_error
+            if not readable:
+                continue
+            event = input_device.read(event_size)
+            if len(event) != event_size:
+                continue
+            (tv_sec, tv_usec, event_type, code, value) = struct.unpack(input_format, event)
 
-        event = input_device.read(event_size)
-        (tv_sec, tv_usec, event_type, code, value) = struct.unpack(input_format, event)
+            now = time.time()
+            key = None
+            if event_type == 1:
+                key = BUTTONS.get(code)
+                if discovery.handle_key(code, value, key, pressed_codes, now):
+                    if value == 1:
+                        pressed_codes.add(code)
+                    elif value == 0:
+                        pressed_codes.discard(code)
+                    write_status(True, button_map, input_device_path, output_device_path, discovery)
+                    continue
+                if value == 1:
+                    pressed_codes.add(code)
+                elif value == 0:
+                    pressed_codes.discard(code)
+                discovery.poll(pressed_codes, now)
+            elif event_type == 2:
+                code = value # up/down
+                key = MOUSE_WHEEL.get(code)
+                value = 0
+                buttons_waiting[code] = now
+            actions = button_map.get(key)
+            if actions == "disabled":
+                print("Button %s is disabled" % key)
+                continue
+            current_app = None
+            if actions:
+                if type(actions) is not list:
+                    actions = [actions]
+                endpoint = "luna://com.webos.applicationManager/getForegroundAppInfo"
+                current_app = luna_send(endpoint, {})
+                current_app = json.loads(current_app).get('appId')
+                filtered_actions = []
+                found_match = False
+                for action in actions:
+                    appId = action.get('appId')
+                    if appId is None:
+                        filtered_actions += [action]
+                    if appId == current_app:
+                        filtered_actions += [action]
+                        found_match = True
+                    if appId == '!' and not found_match:
+                        filtered_actions += [action]
+                actions = filtered_actions
 
-        now = time.time()
-        key = None
-        if event_type == 1:
-            key = BUTTONS.get(code)
-        elif event_type == 2:
-            code = value # up/down
-            key = MOUSE_WHEEL.get(code)
-            value = 0
-            buttons_waiting[code] = now
-        actions = button_map.get(key)
-        if actions == "disabled":
-            print("Button %s is disabled" % key)
-            continue
-        current_app = None
-        if actions:
-            if type(actions) is not list:
-                actions = [actions]
-            endpoint = "luna://com.webos.applicationManager/getForegroundAppInfo"
-            current_app = luna_send(endpoint, {})
-            current_app = json.loads(current_app).get('appId')
-            filtered_actions = []
-            found_match = False
-            for action in actions:
-                appId = action.get('appId')
-                if appId is None:
-                    filtered_actions += [action]
-                if appId == current_app:
-                    filtered_actions += [action]
-                    found_match = True
-                if appId == '!' and not found_match:
-                    filtered_actions += [action]
-            actions = filtered_actions
+            if not actions:
+                # If in exclusive mode, we need to send the input event back so it can be read by others
+                if EXCLUSIVE_MODE and not (BLOCK_MOUSE and code == 1198):
+                    os.write(output_device, event)
+                if key and value == 1:
+                    print("Button %s not configured in magic_mapper_config.json" % key)
+                elif value == 1:
+                    print("Button code %s ignored" % code)
+                continue
 
-        if not actions:
-            # If in exclusive mode, we need to send the input event back so it can be read by others
-            if EXCLUSIVE_MODE and not (BLOCK_MOUSE and code == 1198):
-                os.write(output_device, event)
-            if key and value == 1:
-                print("Button %s not configured in magic_mapper_config.json" % key)
-            elif value == 1:
-                print("Button code %s ignored" % code)
-            continue
+            # Button Down
+            if value == 1:
+                print("%s button down" % key)
+                if code in buttons_waiting and now - buttons_waiting[code] < 1.0:
+                    print("WARNING: Got code %s DOWN while waiting for UP" % code)
+                buttons_waiting[code] = now
 
-        # Button Down
-        if value == 1:
-            print("%s button down" % key)
-            if code in buttons_waiting and now - buttons_waiting[code] < 1.0:
-                print("WARNING: Got code %s DOWN while waiting for UP" % code)
-            buttons_waiting[code] = now
-
-        # Button Up
-        if value == 0:
-            if code not in buttons_waiting:
-                print("WARNING: Got code %s UP with no DOWN" % code)
-            elif now - buttons_waiting[code] > 1.0:
-                print("Ignoring long press of %s" % key)
-                # Tell the user that the long press was blocked because of magic mapper; to avoid any confusion.
-                luna_send("luna://com.webos.notification/createToast", {"sourceId":"magic mapper","message":"long press for %s is disabled due to magic mapper" % key})
-            else:
-                print("%s button up" % key)
-                print("firing event(s) for code: %s button: %s" % (code, key))
-                fire_events(actions)
-            if code in buttons_waiting:
-                del buttons_waiting[code]
+            # Button Up
+            if value == 0:
+                if code not in buttons_waiting:
+                    print("WARNING: Got code %s UP with no DOWN" % code)
+                elif now - buttons_waiting[code] > 1.0:
+                    print("Ignoring long press of %s" % key)
+                    # Tell the user that the long press was blocked because of magic mapper; to avoid any confusion.
+                    luna_send("luna://com.webos.notification/createToast", {"sourceId":"magic mapper","message":"long press for %s is disabled due to magic mapper" % key})
+                else:
+                    print("%s button up" % key)
+                    print("firing event(s) for code: %s button: %s" % (code, key))
+                    fire_events(actions)
+                if code in buttons_waiting:
+                    del buttons_waiting[code]
+    finally:
+        if EXCLUSIVE_MODE:
+            try:
+                fcntl.ioctl(input_device, EVIOCGRAB, 0)
+            except (IOError, OSError):
+                pass
+        input_device.close()
+        if output_device is not None:
+            os.close(output_device)
+        write_status(False, button_map, input_device_path, output_device_path, discovery)
 
 
 def resolve_input_device_by_name(device_name):
@@ -663,8 +745,20 @@ def resolve_input_device_by_name(device_name):
 
 def main():
     """MAIN"""
+    global CONFIG_PATH, STATE_DIR, APP_DIR
+    parser = argparse.ArgumentParser(description="Remap LG Magic Remote buttons")
+    parser.add_argument("--config", default=CONFIG_PATH)
+    parser.add_argument("--state-dir", default=STATE_DIR)
+    parser.add_argument("--app-dir", default=APP_DIR)
+    parser.add_argument("--no-start-delay", action="store_true")
+    args = parser.parse_args()
+    CONFIG_PATH = os.path.abspath(args.config)
+    STATE_DIR = os.path.abspath(args.state_dir)
+    APP_DIR = os.path.abspath(args.app_dir)
+
     print("Starting Magic Mapper")
-    time.sleep(2) # Ensure everything is running before we start
+    if not args.no_start_delay:
+        time.sleep(2) # Ensure everything is running before we start
     button_map = get_button_map()
 
     global WEBOS_MAJOR_VERSION
@@ -673,6 +767,8 @@ def main():
 
     print("BLOCK_MOUSE is %s" % BLOCK_MOUSE)
 
+    signal.signal(signal.SIGTERM, request_stop)
+    signal.signal(signal.SIGINT, request_stop)
     input_loop(button_map=button_map)
 
 
