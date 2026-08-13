@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const app = JSON.parse(readFileSync(join(root, "appinfo.json"), "utf8"));
-const repository = process.env.GITHUB_REPOSITORY || "andrewfraley/magic_mapper";
+const releaseRepository = process.env.GITHUB_REPOSITORY || "andrewfraley/magic_mapper";
+const sourceRepository = process.env.SOURCE_REPOSITORY || "andrewfraley/magic_mapper";
 const ipkName = `${app.id}_${app.version}_all.ipk`;
 const ipkPath = join(root, "dist", ipkName);
 const manifestPath = join(root, "dist", `${app.id}.manifest.json`);
@@ -18,8 +19,8 @@ const manifest = {
   type: app.type,
   title: app.title,
   appDescription: "Discover, disable, and remap LG Magic Remote buttons from the TV",
-  iconUri: `https://github.com/${repository}/releases/latest/download/${basename(app.largeIcon)}`,
-  sourceUrl: `https://github.com/${repository}`,
+  iconUri: `https://github.com/${releaseRepository}/releases/latest/download/${basename(app.largeIcon)}`,
+  sourceUrl: `https://github.com/${sourceRepository}`,
   rootRequired: true,
   ipkUrl: ipkName,
   ipkHash: { sha256 },
