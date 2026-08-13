@@ -129,3 +129,6 @@ dmypy.json
 .pyre/
 
 magic_mapper_config-mine.json
+
+# webOS app tooling
+node_modules/

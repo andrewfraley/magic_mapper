@@ -4,6 +4,31 @@
 
 Magic Mapper is a script that will let you remap unused buttons on the LG Magic Remote. The script itself runs on your rooted LG TV, detects button presses, and allows you to control anything available via the [luna-send api](https://www.webosose.org/docs/tools/commands/luna-send/). Note your TV must be rooted to use this.
 
+## Homebrew app
+
+Magic Mapper now includes a remote-first webOS app. It replaces manual JSON editing for the most common actions while keeping the original mapper and configuration format underneath.
+
+- Discover a remote button by pressing it; its normal action is suppressed during discovery.
+- Disable branded shortcuts such as Netflix, Prime Video, Disney+, Rakuten TV, or Alexa.
+- Open any app installed on the TV, selected by title instead of application ID.
+- Make one remote button behave like another.
+- See an authoritative **Active** or **Stopped** state from the mapper process.
+- Restore individual buttons, inspect the recent log, or uninstall the app and its boot service from the TV UI.
+
+The app requires a rooted TV with [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel) running as root. On first setup it imports supported mappings from `/home/root/magic_mapper_config.json`, replaces the legacy startup hook, and stores its state under `/var/lib/webosbrew/magic-mapper`. Uninstalling stops the input grab, restores default button behavior, and removes that state.
+
+### Build the app
+
+Node.js 22 or newer is recommended. The Python runtime remains compatible with the minimal Python installation supplied by webOS.
+
+```sh
+npm ci
+npm run check
+npm run package
+```
+
+The IPK is written to `dist/`. Tagged builds also generate the release manifest consumed by Homebrew Channel.
+
 ## Currently Supported Functions
 
 The script has support to do the the following (default config button):

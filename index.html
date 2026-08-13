@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Magic Mapper</title>
+    <link rel="stylesheet" href="css/app.css">
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="wordmark" aria-label="Magic Mapper">
+          <span class="mark">M</span>
+          <span>MAGIC MAPPER</span>
+        </div>
+        <button id="system-button" class="text-button focusable" type="button">Service &amp; removal</button>
+      </header>
+
+      <main id="app" aria-live="polite">
+        <section class="hero">
+          <div>
+            <p class="eyebrow">MAGIC REMOTE CONTROL SURFACE</p>
+            <h1>Make every button<br>earn its place.</h1>
+            <p id="summary" class="summary">Reading the mapper on your TV…</p>
+          </div>
+          <div class="status-panel">
+            <div class="status-line">
+              <span id="status-dot" class="status-dot"></span>
+              <span id="status-label">Checking</span>
+            </div>
+            <strong id="mapping-count">—</strong>
+            <span class="status-caption">remote buttons changed</span>
+            <button id="primary-button" class="primary focusable" type="button">Set up Magic Mapper</button>
+          </div>
+        </section>
+
+        <section class="mappings-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">ACTIVE MAP</p>
+              <h2>Your remote</h2>
+            </div>
+            <button id="discover-button" class="discover focusable" type="button">
+              <span class="discover-plus">+</span>
+              <span>Discover a button</span>
+            </button>
+          </div>
+          <div id="mappings" class="mappings"></div>
+          <div id="empty-state" class="empty-state" hidden>
+            <span class="empty-glyph">↗</span>
+            <div>
+              <strong>No buttons changed yet.</strong>
+              <p>Choose Discover, then press the button you want to reclaim.</p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <span>OK select</span><span>← back</span><span>Magic Mapper runs locally on this TV</span>
+      </footer>
+    </div>
+
+    <div id="modal" class="modal" hidden>
+      <div class="modal-scrim"></div>
+      <section id="modal-card" class="modal-card" role="dialog" aria-modal="true"></section>
+    </div>
+    <div id="toast" class="toast" role="status" hidden></div>
+
+    <script src="js/platform.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>

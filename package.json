@@ -1,0 +1,14 @@
+{
+  "name": "magic-mapper-webos",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Remote-first Homebrew app for Magic Mapper",
+  "scripts": {
+    "check": "python3 -m unittest discover -s tests -v && python3 -m py_compile magic_mapper.py magic_mapper_runtime.py mapperctl.py",
+    "package": "node scripts/package.mjs",
+    "manifest": "node scripts/manifest.mjs"
+  },
+  "devDependencies": {
+    "@webos-tools/cli": "^3.2.1"
+  }
+}

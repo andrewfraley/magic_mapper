@@ -1,0 +1,14 @@
+{
+  "id": "com.github.andrewfraley.magicmapper",
+  "version": "0.1.0",
+  "vendor": "Magic Mapper contributors",
+  "type": "web",
+  "main": "index.html",
+  "title": "Magic Mapper",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgColor": "#090b0c",
+  "iconColor": "#e8ff48",
+  "uiRevision": 2,
+  "requiredPermissions": ["application.operation"]
+}
