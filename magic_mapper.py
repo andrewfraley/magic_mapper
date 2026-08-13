@@ -21,6 +21,8 @@ DEVICE_NAME = 'LGE M-RCU - Builtin [0]'   # the exact Name= shown in /proc/bus/i
 
 
 OUTPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [2]'  # unbound codes get resent to this device in exclusive mode
+WEBOS_25_OUTPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [1]'
+WEBOS_25_BACK_CODE = 412
 
 
 BUTTONS = {
@@ -483,6 +485,23 @@ def send_keystroke(device, keycode):
     send_input_event(device, 0, 0, 0)
 
 
+def send_clean_keypress(device, keycode):
+    """Send one complete keypress using fresh event timestamps."""
+    input_format = "llHHi"
+    out_file = os.open(device, os.O_WRONLY)
+    try:
+        for value in (1, 0):
+            now = time.time()
+            tv_sec = int(now)
+            tv_usec = int((now - tv_sec) * 1000000)
+            os.write(out_file, struct.pack(input_format, tv_sec, tv_usec, 1, keycode, value))
+            os.write(out_file, struct.pack(input_format, tv_sec, tv_usec, 0, 0, 0))
+            if value == 1:
+                time.sleep(0.08)
+    finally:
+        os.close(out_file)
+
+
 def send_input_event(device, keycode, value, event_type):
     """Low level function to write to the input device file
     Don't call this from magic_mapper_config.json
@@ -521,12 +540,21 @@ def get_webos_version():
     return int(major_version)
 
 
+def get_output_device_name():
+    """Return the passthrough device that preserves remote semantics."""
+    # On webOS 25, Builtin [2] turns a relayed Back press into Exit.
+    if WEBOS_MAJOR_VERSION >= 10:
+        return WEBOS_25_OUTPUT_DEVICE_NAME
+    return OUTPUT_DEVICE_NAME
+
+
 def input_loop(button_map):
     # Read from the input device
     # https://stackoverflow.com/a/16682549/866057
     input_format = "llHHi"
     event_size = struct.calcsize(input_format)
     buttons_waiting = {}
+    suppress_next_sync = False
 
     input_device_path = resolve_input_device_by_name(DEVICE_NAME)
     print("Opening input device: %s" % input_device_path)
@@ -535,7 +563,8 @@ def input_loop(button_map):
     if EXCLUSIVE_MODE:
         print("EXCLUSIVE_MODE is enabled, taking over input device")
         fcntl.ioctl(input_device, EVIOCGRAB, 1)
-        output_device_path = resolve_input_device_by_name(OUTPUT_DEVICE_NAME)
+        output_device_name = get_output_device_name()
+        output_device_path = resolve_input_device_by_name(output_device_name)
         print("Keys will be resent to: %s" % output_device_path)
         output_device = os.open(output_device_path, os.O_WRONLY)
     else:
@@ -556,6 +585,10 @@ def input_loop(button_map):
         event = input_device.read(event_size)
         (tv_sec, tv_usec, event_type, code, value) = struct.unpack(input_format, event)
 
+        if suppress_next_sync and event_type == 0:
+            suppress_next_sync = False
+            continue
+
         now = time.time()
         key = None
         if event_type == 1:
@@ -565,6 +598,14 @@ def input_loop(button_map):
             key = MOUSE_WHEEL.get(code)
             value = 0
             buttons_waiting[code] = now
+
+        if EXCLUSIVE_MODE and WEBOS_MAJOR_VERSION >= 10 and event_type == 1 and code == WEBOS_25_BACK_CODE:
+            if value == 1:
+                suppress_next_sync = True
+            if value == 0:
+                print("Replaying Back as a clean webOS 25 keypress")
+                send_clean_keypress(output_device_path, code)
+            continue
         actions = button_map.get(key)
         if actions == "disabled":
             print("Button %s is disabled" % key)
