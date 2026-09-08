@@ -437,6 +437,8 @@ List of known buttons and their codes. Not all remote buttons are on this list, 
 
 Note that long presses (longer than 1s) are ignored. I will eventually add support for different actions based on short vs long press.
 
+Note that key repeats are not forwarded for buttons you have mapped, so holding down a mapped button (the direction keys in particular) will not repeat the way it does normally.
+
 ```
  "red"
  "green"
@@ -449,8 +451,9 @@ Note that long presses (longer than 1s) are ignored. I will eventually add suppo
  "play"
  "pause"
  "stop"
- "fastforward"
+ "record"
  "rewind"
+ "fastforward"
  "1"
  "2"
  "3"
@@ -462,6 +465,7 @@ Note that long presses (longer than 1s) are ignored. I will eventually add suppo
  "9"
  "0"
  "prime"
+ "sling"
  "netflix"
  "disney"
  "lg_channels"
@@ -471,15 +475,25 @@ Note that long presses (longer than 1s) are ignored. I will eventually add suppo
  "guide"
  "voice"
  "channels"
+ "channels_alt" - Seen on a non-magic remote
  "..."
  "...alt"  - Seen on a non-magic remote
  "search"
  "search_alt" - Seen on a non-magic remote
  "exit"  - Not the back button, this exits apps, seen on a non-magic remote
  "sap"
- "info"
  "tv"
+ "info"
  "home"
+ "ok"
+ "back"
+ "home_hub" - Seen on the LG C5 remote
+ "accessibility" - Seen on the LG C5 remote
+ "settings"
+ "up"
+ "down"
+ "left"
+ "right"
 ```
 
 ## Other Use Cases
