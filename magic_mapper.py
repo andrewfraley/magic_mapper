@@ -69,7 +69,15 @@ BUTTONS = {
     1116: "tv",
     358: "info",
     773: "home",
-    28: "ok"
+    28: "ok",
+    412: "back",
+    1123: "home_hub",
+    1124: "accessibility",
+    139: "settings",
+    103: "up",
+    108: "down",
+    105: "left",
+    106: "right",
 }
 
 MOUSE_WHEEL = {
