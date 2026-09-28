@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import time
 import struct
 import subprocess
@@ -21,6 +22,7 @@ DEVICE_NAME = 'LGE M-RCU - Builtin [0]'   # the exact Name= shown in /proc/bus/i
 
 
 OUTPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [2]'  # unbound codes get resent to this device in exclusive mode
+# If OUTPUT_DEVICE_NAME isn't found, another 'LGE M-RCU - Builtin [N]' device is picked automatically
 
 
 BUTTONS = {
@@ -264,7 +266,7 @@ def press_button(inputs):
     keycode = get_keycode(button)
     if not keycode:
         return
-    output_device_path = resolve_input_device_by_name(OUTPUT_DEVICE_NAME)
+    output_device_path = resolve_output_device()
     print("Simulating keystroke with button '%s' (keycode %s). Output device: %s" % (button, keycode, output_device_path))
     send_keystroke(output_device_path, keycode)
 
@@ -537,13 +539,19 @@ def input_loop(button_map):
     buttons_waiting = {}
 
     input_device_path = resolve_input_device_by_name(DEVICE_NAME)
+    if input_device_path is None:
+        print("ERROR: could not find input device, check DEVICE_NAME in magic_mapper.py")
+        sys.exit(1)
     print("Opening input device: %s" % input_device_path)
     input_device = open(input_device_path, "rb")
 
     if EXCLUSIVE_MODE:
         print("EXCLUSIVE_MODE is enabled, taking over input device")
         fcntl.ioctl(input_device, EVIOCGRAB, 1)
-        output_device_path = resolve_input_device_by_name(OUTPUT_DEVICE_NAME)
+        output_device_path = resolve_output_device()
+        if output_device_path is None:
+            print("ERROR: could not find output device, check OUTPUT_DEVICE_NAME in magic_mapper.py")
+            sys.exit(1)
         print("Keys will be resent to: %s" % output_device_path)
         output_device = os.open(output_device_path, os.O_WRONLY)
     else:
@@ -630,42 +638,68 @@ def input_loop(button_map):
                 del buttons_waiting[code]
 
 
-def resolve_input_device_by_name(device_name):
+def read_input_devices():
     """
-    Find the input device path by looking for the device_name in /proc/bus/input/devices
+    Parse /proc/bus/input/devices into a list of (name, event_path) tuples
     """
-    print("Resolving input device path for device named '%s'" % device_name)
     try:
         with open("/proc/bus/input/devices", "r") as f:
             data = f.read()
     except Exception as e:
         print("ERROR: cannot read /proc/bus/input/devices: %s" % e)
-        return None
+        return []
 
-    # Split on blank lines; each block describes one device
-    blocks = re.split(r"\n\s*\n", data.strip())
+    devices = []
+    # Split before each I: line; each block describes one device.
+    # The pattern must consume the newline: re.split ignores zero-width matches before python 3.7
+    blocks = re.split(r"\n\s*(?=I:)", data.strip())
     for block in blocks:
         # Look for N: Name="..."
         m_name = re.search(r'^N:\s+Name="([^"]+)"', block, flags=re.M)
         if not m_name:
             continue
-        if m_name.group(1) != device_name:
-            continue
 
-        # Found our device; look for H: Handlers=...
+        # Look for H: Handlers=... and pick the first 'eventX'
+        event_path = None
         m_handlers = re.search(r'^H:\s+Handlers=([^\n]+)', block, flags=re.M)
-        if not m_handlers:
-            continue
+        if m_handlers:
+            for h in m_handlers.group(1).split():
+                if h.startswith("event") and h[5:].isdigit():
+                    event_path = "/dev/input/" + h
+                    break
+        devices.append((m_name.group(1), event_path))
+    return devices
 
-        handlers = m_handlers.group(1).split()
-        # pick the first 'eventX'
-        for h in handlers:
-            if h.startswith("event") and h[5:].isdigit():
-                event_path = "/dev/input/" + h
-                print("Resolved '%s' to %s" % (device_name, event_path))
-                return event_path
+
+def resolve_input_device_by_name(device_name):
+    """
+    Find the input device path by looking for the device_name in /proc/bus/input/devices
+    """
+    print("Resolving input device path for device named '%s'" % device_name)
+    devices = read_input_devices()
+    for name, event_path in devices:
+        if name == device_name and event_path:
+            print("Resolved '%s' to %s" % (device_name, event_path))
+            return event_path
 
     print("WARNING: device named '%s' not found in /proc/bus/input/devices" % device_name)
+    print("Available devices: %s" % ", ".join("'%s'" % name for name, _ in devices))
+    return None
+
+
+def resolve_output_device():
+    """
+    Find the device to resend unbound codes to. Use OUTPUT_DEVICE_NAME if it exists,
+    otherwise fall back to any other 'LGE M-RCU - Builtin [N]' device that isn't DEVICE_NAME
+    """
+    output_device_path = resolve_input_device_by_name(OUTPUT_DEVICE_NAME)
+    if output_device_path:
+        return output_device_path
+
+    for name, event_path in read_input_devices():
+        if name.startswith("LGE M-RCU - Builtin") and name != DEVICE_NAME and event_path:
+            print("Falling back to output device '%s' (%s)" % (name, event_path))
+            return event_path
     return None
 
 
