@@ -827,8 +827,11 @@ def main():
     WEBOS_MAJOR_VERSION = get_webos_version()
     print("WEBOS_MAJOR_VERSION: %s" % WEBOS_MAJOR_VERSION)
 
-    print("Settings: block_mouse=%s exclusive_mode=%s device_name='%s' output_device_name='%s'" % (
-        BLOCK_MOUSE, EXCLUSIVE_MODE, DEVICE_NAME, OUTPUT_DEVICE_NAME if OUTPUT_DEVICE_NAME_SET else "auto"))
+    print("Settings:")
+    print("  block_mouse: %s" % BLOCK_MOUSE)
+    print("  exclusive_mode: %s" % EXCLUSIVE_MODE)
+    print("  device_name: '%s'" % DEVICE_NAME)
+    print("  output_device_name: '%s'" % (OUTPUT_DEVICE_NAME if OUTPUT_DEVICE_NAME_SET else "auto"))
 
     input_loop(button_map=button_map)
 
