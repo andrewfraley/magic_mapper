@@ -1,5 +1,7 @@
 # Magic Mapper
 
+> **Upgrading from an older version?** Version 1.0.0 moved the settings that used to be edited in magic_mapper.py into magic_mapper_config.json, see [Upgrading to 1.0.0](#upgrading-to-100).
+
 ## Summary
 
 Magic Mapper is a script that will let you remap unused buttons on the LG Magic Remote. The script itself runs on your rooted LG TV, detects button presses, and allows you to control anything available via the [luna-send api](https://www.webosose.org/docs/tools/commands/luna-send/). Note your TV must be rooted to use this.
@@ -10,7 +12,7 @@ The script has support to do the the following (default config button):
 
 - [Decrease the OLED light](#reduce_oled_light--increase_oled_light) (red button)
 - [Increase the OLED light](#reduce_oled_light--increase_oled_light) (green button)
-- [Set a specific OLED light value](#set_oled_light) (not configured by default)
+- [Set a specific OLED light value](#set_oled_backlight) (not configured by default)
 - [Cycle the energy savings modes](#cycle_energy_mode) (yellow button)
 - [Set a specific energy savings mode](#set_energy_mode)
 - [Turn the screen off](#screen_off) - press any button but power to turn it back on (9 button)
@@ -28,16 +30,19 @@ The script has support to do the the following (default config button):
 
 ## TV Models supported (Likely any LG TV after 2018 are supported until this stops working with unknown future models)
 
-- LG C9 - Fully tested on FW 05.30.25
+- LG C9 (webOS 4) - Fully tested on FW 05.30.25
 - LG CX - Not tested, but should work.
 - LG C1 - Not tested, but should work.
-- LG C2 - Fully tested
+- LG C2 (webOS 7) - Fully tested
+- LG C4 (webOS 10) - Tested by a contributor on webOS 10.3.1
+- LG C5 (webOS 10) - Used by a contributor, buttons from the C5 remote are supported
 
 ## Known Issues
 
 - Some buttons automatically activate the mouse, you can [disable the mouse](#disable-mouse-experimental) to avoid this, but this will disable the mouse completely.
+- On webOS 10, resending button presses through `LGE M-RCU - Builtin [2]` made Back exit the whole app instead of closing a menu, so on webOS 10 and later `LGE M-RCU - Builtin [1]` is used automatically. If buttons you haven't mapped behave strangely while Magic Mapper is running, try setting [`output_device_name`](#settings) to the other Builtin device and please [open an issue](https://github.com/andrewfraley/magic_mapper/issues).
 - If a button has a long press function (ie 0-9), and it's configured in magic_mapper_config.json, long pressing the button will no longer work.
-- This script attempts to take exclusive control of the remote's input device; this could have unknown unintended consequences. If weird things start happening, edit the script and set `EXCLUSIVE_MODE = False` near the top. Note that with exclusive mode disabled, a button's default behavior will not be blocked, which means you will not be able to ovveride app buttons or buttons such as "guide".
+- This script attempts to take exclusive control of the remote's input device; this could have unknown unintended consequences. If weird things start happening, set `"exclusive_mode": false` in the [settings](#settings). Note that with exclusive mode disabled, a button's default behavior will not be blocked, which means you will not be able to ovveride app buttons or buttons such as "guide".
 
 ## Installation / Setup
 
@@ -49,19 +54,80 @@ The script has support to do the the following (default config button):
 
 ```
 cd /home/root
-wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/main/magic_mapper.py
-wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/main/magic_mapper_config.json
+wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.0.0/magic_mapper.py
+wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.0.0/magic_mapper_config.json
 cd /var/lib/webosbrew/init.d
-wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/main/start_magic_mapper
+wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.0.0/start_magic_mapper
 chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 ```
 
 - Edit magic_mapper_config.json as needed
 - Lastly, reboot the TV (execute the reboot command over SSH, or open the homebrew app, click the cog, click the reboot link.)
 
+## Upgrading
+
+Read the upgrade notes below for any changes you need to make, then download the new magic_mapper.py and start_magic_mapper for the version you want (replace v1.0.0 below). Don't download magic_mapper_config.json again, your existing config keeps working.
+
+```
+/var/lib/webosbrew/init.d/start_magic_mapper stop
+wget -O /home/root/magic_mapper.py https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.0.0/magic_mapper.py
+wget -O /var/lib/webosbrew/init.d/start_magic_mapper https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.0.0/start_magic_mapper
+chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
+/var/lib/webosbrew/init.d/start_magic_mapper start
+```
+
+If you're upgrading from a version before 1.0.0, the old start_magic_mapper doesn't have `stop`, so skip the first and last commands and reboot the TV after downloading instead.
+
+### Upgrading to 1.0.0
+
+Breaking change: settings are no longer edited in magic_mapper.py. If you changed any of these at the top of the old script, set them in the new [`magic_mapper_settings`](#settings) section of magic_mapper_config.json instead, otherwise they go back to the defaults:
+
+| Old setting in magic_mapper.py | New setting in magic_mapper_config.json |
+| --- | --- |
+| `BLOCK_MOUSE = True` | `"block_mouse": true` |
+| `EXCLUSIVE_MODE = False` | `"exclusive_mode": false` |
+| `DEVICE_NAME = '...'` | `"input_device_name": "..."` |
+| `OUTPUT_DEVICE_NAME = '...'` | `"output_device_name": "..."` (usually not needed any more, the output device is now found automatically) |
+
+For example:
+
+```
+{
+  "magic_mapper_settings": {
+    "block_mouse": true
+  },
+  "yellow": { ... your existing buttons ... }
+}
+```
+
+Your button mappings don't need any changes. Also new in 1.0.0:
+
+- Invalid button mappings are reported in /tmp/magic_mapper.log at startup and skipped, instead of crashing the script when the button is pressed.
+- Fixed Back exiting the whole app instead of closing menus on webOS 10.
+- start_magic_mapper restarts Magic Mapper if it crashes, and has `start`, `stop` and `restart` commands, see [Starting and stopping](#starting-and-stopping).
+
+## Settings
+
+Settings live in the `magic_mapper_settings` section at the top of magic_mapper_config.json. You should never need to edit magic_mapper.py. Every setting is optional; anything left out uses the default.
+
+```
+"magic_mapper_settings": {
+  "block_mouse": false,
+  "exclusive_mode": true
+}
+```
+
+- `block_mouse` (default `false`) - Prevent WebOS from seeing the Magic Remote mouse, see [Disable Mouse](#disable-mouse-experimental). Requires `exclusive_mode`.
+- `exclusive_mode` (default `true`) - Take exclusive control of the remote so mapped buttons don't also trigger their normal behavior. Set to `false` if weird things start happening, but you won't be able to override app buttons or buttons such as "guide".
+
+These are also supported but normally not needed:
+
+- `input_device_name` (default `"LGE M-RCU - Builtin [0]"`) - The input device to read, the exact `Name=` shown in `/proc/bus/input/devices`. UNTESTED: try `"LGE M-RCU - Builtin [1]"` for IR remotes.
+- `output_device_name` (default: automatic) - The input device that unmapped button presses are resent to in exclusive mode. By default, on webOS 10 and later `"LGE M-RCU - Builtin [1]"` is used (see [Known Issues](#known-issues)); otherwise `"LGE M-RCU - Builtin [2]"` is used if it exists, and if not, another `LGE M-RCU - Builtin` device is picked automatically.
+
 ## Configuring buttons
 
-Buttons are configured via the magic_mapper_config.json file. magic_mapper_config.json contains a json formatted dictionary where each primary key is the name of the button to map (see the [Button List](#button-list) below). Note that changes to magic_mapper_config.json require you to restart the script, so just reboot your TV or if testing over SSH, kill the magic_mapper.py process and run the script manually.
+Buttons are configured via the magic_mapper_config.json file. magic_mapper_config.json contains a json formatted dictionary where each primary key is the name of the button to map (see the [Button List](#button-list) below). Note that changes to magic_mapper_config.json require you to restart the script, so just reboot your TV or run `/var/lib/webosbrew/init.d/start_magic_mapper restart` over SSH (see [Starting and stopping](#starting-and-stopping)).
 
 ```
 "yellow": {  # The name of the button to remap, see the Button List below
@@ -122,7 +188,7 @@ If none of the entries matched because of the appId restriction, the keypress wi
 
 ## Disabling a button
 
-Use this to completely disable a button. Note this will not work if `EXCLUSIVE_MODE = False`
+Use this to completely disable a button. Note this will not work if `"exclusive_mode": false`
 
 ```
 "netflix": "disabled"
@@ -133,7 +199,7 @@ Use this to completely disable a button. Note this will not work if `EXCLUSIVE_M
 If you wanted to replace the Amazon Prime button with Plex:
 
 - Get the Plex app id by copying the included list_apps.py script to the TV.
-  - `wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/main/list_apps.py`
+  - `wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.0.0/list_apps.py`
   - Run it with:
     - (C9/CX): `python list_apps.py`
     - (C1/C2+): `python3 list_apps.py`
@@ -154,6 +220,18 @@ If you wanted to replace the Amazon Prime button with Plex:
 ## Logs
 
 start_magic_mapper will redirect output to /tmp/magic_mapper.log
+
+## Starting and stopping
+
+start_magic_mapper runs Magic Mapper in the background and restarts it automatically if it exits. If it exits 5 times in a row within 30 seconds of starting (for example because of a bad config), it gives up; check /tmp/magic_mapper.log for the errors.
+
+```
+/var/lib/webosbrew/init.d/start_magic_mapper stop     # stop Magic Mapper
+/var/lib/webosbrew/init.d/start_magic_mapper start    # start it again
+/var/lib/webosbrew/init.d/start_magic_mapper restart  # restart it, e.g. after editing magic_mapper_config.json
+```
+
+Killing the python process (even with `kill -9`) will just cause it to be restarted, so use `stop` instead. To test changes over SSH, run `start_magic_mapper stop` and then run `python magic_mapper.py` (or `python3 magic_mapper.py`) manually so you can watch the output.
 
 ## Function List
 
@@ -208,7 +286,7 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
   }
   ```
 
-### set_oled_light
+### set_oled_backlight
 
 - Set the OLED backlight to a specific value
 - Inputs:
@@ -397,7 +475,7 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
 
 ### Disable Mouse (Experimental)
 
-To disable the mouse, edit the script and change `BLOCK_MOUSE = True` near the top.  This will prevent WebOS from seeing that the remote has activated its mouse.  Note that this does not disable the mouse inside the remote, but it prevents WebOS from seeing that it has been activated.  Due to the way this works there could be erratic behavior, please report any problems by [opening an issue](https://github.com/andrewfraley/magic_mapper/issues).
+To disable the mouse, set `"block_mouse": true` in the [settings](#settings).  This will prevent WebOS from seeing that the remote has activated its mouse.  Note that this does not disable the mouse inside the remote, but it prevents WebOS from seeing that it has been activated.  Due to the way this works there could be erratic behavior, please report any problems by [opening an issue](https://github.com/andrewfraley/magic_mapper/issues).
 
 ### send_tcp_command
 
@@ -519,7 +597,7 @@ You can view all issues (closed and still open) here: https://github.com/andrewf
 
 ## Modifying the script
 
-The function names supplied in magic_mapper_config.json map to the function names in the script. If you wanted to have the yellow button do something unsupported by this script, create a new function in magic_mapper.py and then add the function to magic_mapper_config.json such as:
+The function names supplied in magic_mapper_config.json map to the function names in the script. If you wanted to have the yellow button do something unsupported by this script, create a new function in magic_mapper.py, add its name to `CONFIG_FUNCTIONS` in the script (only functions listed there can be called from the config), and then add the function to magic_mapper_config.json such as:
 
 ```
 "yellow": {

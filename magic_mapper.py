@@ -1,6 +1,8 @@
 import os
 import re
+import sys
 import time
+import traceback
 import struct
 import subprocess
 import json
@@ -13,14 +15,21 @@ try:
 except ImportError:
     SOCKET_AVAILABLE = False
 
-BLOCK_MOUSE = False  # Set to True to disable the mouse, note EXCLUSIVE_MODE must be True to work
-EXCLUSIVE_MODE = True  # Prevent bound codes from being seen by WebOS, must be True for BLOCK_MOUSE
+VERSION = "1.0.0"
 
-DEVICE_NAME = 'LGE M-RCU - Builtin [0]'   # the exact Name= shown in /proc/bus/input/devices
-# DEVICE_NAME = 'LGE M-RCU - Builtin [1]'   # UNTESTED - Try this for IR remotes
-
-
-OUTPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [2]'  # unbound codes get resent to this device in exclusive mode
+# Default settings. Don't edit these here, override them in the "magic_mapper_settings"
+# section of magic_mapper_config.json instead (see the Settings section of the README)
+BLOCK_MOUSE = False  # block_mouse: disable the mouse, requires EXCLUSIVE_MODE
+EXCLUSIVE_MODE = True  # exclusive_mode: prevent bound codes from being seen by WebOS
+INPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [0]'  # input_device_name: the exact Name= shown in /proc/bus/input/devices
+OUTPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [2]'  # output_device_name: unbound codes get resent to this device in exclusive mode
+# If OUTPUT_DEVICE_NAME isn't found, another 'LGE M-RCU - Builtin [N]' device is picked automatically
+INPUT_DEVICE_NAME_SET = False  # True when input_device_name was set in the config
+OUTPUT_DEVICE_NAME_SET = False  # True when output_device_name was set in the config
+# On webOS 10+, keys resent through Builtin [2] make Back exit the app instead of closing menus,
+# so Builtin [1] is preferred there unless output_device_name is set
+WEBOS_10_OUTPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [1]'
+WEBOS_MAJOR_VERSION = 0  # set in main()
 
 
 BUTTONS = {
@@ -219,6 +228,7 @@ def curl(inputs):
     url = inputs.get("url")
     if not url:
         print("ERROR: curl function called but url not supplied")
+        return
 
     method = inputs.get("method", "GET").upper()
 
@@ -264,7 +274,7 @@ def press_button(inputs):
     keycode = get_keycode(button)
     if not keycode:
         return
-    output_device_path = resolve_input_device_by_name(OUTPUT_DEVICE_NAME)
+    output_device_path = resolve_output_device()
     print("Simulating keystroke with button '%s' (keycode %s). Output device: %s" % (button, keycode, output_device_path))
     send_keystroke(output_device_path, keycode)
 
@@ -375,19 +385,100 @@ def toggle_piccap(inputs):
 # The fuctions below here should not be called by magic_mapper_config.json
 ####################################
 
+# The functions above that magic_mapper_config.json is allowed to call.
+# If you add a new function for the config, add it here too.
+CONFIG_FUNCTIONS = (
+    "cycle_energy_mode",
+    "toggle_eye_comfort",
+    "screen_off",
+    "set_energy_mode",
+    "increase_oled_light",
+    "reduce_oled_light",
+    "set_oled_backlight",
+    "launch_app",
+    "send_ir_command",
+    "curl",
+    "press_button",
+    "send_cec_button",
+    "set_dynamic_tone_mapping",
+    "disabled",
+    "send_tcp_command",
+    "toggle_piccap",
+)
+
 
 def get_button_map():
     """Read the json config file"""
     config_path = os.path.join(os.path.dirname(__file__), "magic_mapper_config.json")
     with open(config_path) as config_file:
         button_map = json.load(config_file)
-    return button_map
+    settings = button_map.pop("magic_mapper_settings", {})
+    apply_settings(settings)
+    return validate_button_map(button_map)
+
+
+def validate_button_map(button_map):
+    """Check every button mapping at startup and drop the invalid ones so the rest still work"""
+    valid_map = {}
+    for button, actions in button_map.items():
+        if actions == "disabled":
+            valid_map[button] = actions
+            continue
+        if isinstance(actions, dict):
+            action_list = [actions]
+        elif isinstance(actions, list):
+            action_list = actions
+        else:
+            print("ERROR: config for button '%s' must be a dict, a list of dicts, or \"disabled\", ignoring it" % button)
+            continue
+
+        problems = []
+        for action in action_list:
+            if not isinstance(action, dict):
+                problems.append("each entry must be a dict")
+            elif action.get("function") not in CONFIG_FUNCTIONS:
+                problems.append("unknown function '%s'" % action.get("function"))
+            elif not isinstance(action.get("inputs", {}), dict):
+                problems.append("inputs for '%s' must be a dict" % action["function"])
+        if not action_list:
+            problems.append("the list of actions is empty")
+
+        if problems:
+            print("ERROR: config for button '%s' is invalid (%s), ignoring it" % (button, "; ".join(problems)))
+            continue
+        valid_map[button] = actions
+    return valid_map
+
+
+def apply_settings(settings):
+    """Override the default settings with the magic_mapper_settings section of the config"""
+    global BLOCK_MOUSE, EXCLUSIVE_MODE, INPUT_DEVICE_NAME, INPUT_DEVICE_NAME_SET, OUTPUT_DEVICE_NAME, OUTPUT_DEVICE_NAME_SET
+    for key in settings:
+        if key not in ["block_mouse", "exclusive_mode", "input_device_name", "output_device_name"]:
+            print("WARNING: unknown setting '%s' in magic_mapper_settings" % key)
+
+    if "block_mouse" in settings:
+        BLOCK_MOUSE = str_to_bool(settings["block_mouse"])
+    if "exclusive_mode" in settings:
+        EXCLUSIVE_MODE = str_to_bool(settings["exclusive_mode"])
+    if "input_device_name" in settings:
+        INPUT_DEVICE_NAME = settings["input_device_name"]
+        INPUT_DEVICE_NAME_SET = True
+    if "output_device_name" in settings:
+        OUTPUT_DEVICE_NAME = settings["output_device_name"]
+        OUTPUT_DEVICE_NAME_SET = True
+
+    if BLOCK_MOUSE and not EXCLUSIVE_MODE:
+        print("WARNING: block_mouse has no effect unless exclusive_mode is true")
 
 
 def fire_event_one(action):
     """Execute the function configured for the button"""
     func_name = action["function"]
     print("func_name: %s" % func_name)
+    if func_name not in CONFIG_FUNCTIONS:
+        print("ERROR: function '%s' can't be called from magic_mapper_config.json" % func_name)
+        return
     inputs = action.get("inputs", {})
     globals()[func_name](inputs)
 
@@ -521,12 +612,16 @@ def str_to_bool(value):
 
 def get_webos_version():
     """Return webos version"""
-    with open("/etc/starfish-release") as f:
-        release = f.read()
+    try:
+        with open("/etc/starfish-release") as f:
+            release = f.read()
 
-    version = release.split()[2]
-    major_version = version.split(".")[0]
-    return int(major_version)
+        version = release.split()[2]
+        major_version = version.split(".")[0]
+        return int(major_version)
+    except (OSError, IOError, IndexError, ValueError) as e:
+        print("WARNING: could not determine the WebOS version, assuming an old version: %s" % e)
+        return 0
 
 
 def input_loop(button_map):
@@ -536,14 +631,20 @@ def input_loop(button_map):
     event_size = struct.calcsize(input_format)
     buttons_waiting = {}
 
-    input_device_path = resolve_input_device_by_name(DEVICE_NAME)
+    input_device_path = resolve_input_device_by_name(INPUT_DEVICE_NAME)
+    if input_device_path is None:
+        print("ERROR: could not find input device, check input_device_name in magic_mapper_config.json")
+        sys.exit(1)
     print("Opening input device: %s" % input_device_path)
     input_device = open(input_device_path, "rb")
 
     if EXCLUSIVE_MODE:
         print("EXCLUSIVE_MODE is enabled, taking over input device")
         fcntl.ioctl(input_device, EVIOCGRAB, 1)
-        output_device_path = resolve_input_device_by_name(OUTPUT_DEVICE_NAME)
+        output_device_path = resolve_output_device()
+        if output_device_path is None:
+            print("ERROR: could not find output device, check output_device_name in magic_mapper_config.json")
+            sys.exit(1)
         print("Keys will be resent to: %s" % output_device_path)
         output_device = os.open(output_device_path, os.O_WRONLY)
     else:
@@ -582,8 +683,11 @@ def input_loop(button_map):
             if type(actions) is not list:
                 actions = [actions]
             endpoint = "luna://com.webos.applicationManager/getForegroundAppInfo"
-            current_app = luna_send(endpoint, {})
-            current_app = json.loads(current_app).get('appId')
+            try:
+                current_app = json.loads(luna_send(endpoint, {})).get('appId')
+            except Exception:
+                print("ERROR: could not get the foreground app, only mappings without an appId will be used")
+                traceback.print_exc()
             filtered_actions = []
             found_match = False
             for action in actions:
@@ -621,57 +725,103 @@ def input_loop(button_map):
             elif now - buttons_waiting[code] > 1.0:
                 print("Ignoring long press of %s" % key)
                 # Tell the user that the long press was blocked because of magic mapper; to avoid any confusion.
-                luna_send("luna://com.webos.notification/createToast", {"sourceId":"magic mapper","message":"long press for %s is disabled due to magic mapper" % key})
+                try:
+                    luna_send("luna://com.webos.notification/createToast", {"sourceId":"magic mapper","message":"long press for %s is disabled due to magic mapper" % key})
+                except Exception:
+                    traceback.print_exc()
             else:
                 print("%s button up" % key)
                 print("firing event(s) for code: %s button: %s" % (code, key))
-                fire_events(actions)
+                # Don't let one failing action kill the script
+                try:
+                    fire_events(actions)
+                except Exception:
+                    print("ERROR: action for button %s failed" % key)
+                    traceback.print_exc()
             if code in buttons_waiting:
                 del buttons_waiting[code]
 
 
-def resolve_input_device_by_name(device_name):
+def read_input_devices():
     """
-    Find the input device path by looking for the device_name in /proc/bus/input/devices
+    Parse /proc/bus/input/devices into a list of (name, event_path) tuples
     """
-    print("Resolving input device path for device named '%s'" % device_name)
     try:
         with open("/proc/bus/input/devices", "r") as f:
             data = f.read()
     except Exception as e:
         print("ERROR: cannot read /proc/bus/input/devices: %s" % e)
-        return None
+        return []
 
-    # Split on blank lines; each block describes one device
-    blocks = re.split(r"\n\s*\n", data.strip())
+    devices = []
+    # Split before each I: line; each block describes one device.
+    # The pattern must consume the newline: re.split ignores zero-width matches before python 3.7
+    blocks = re.split(r"\n\s*(?=I:)", data.strip())
     for block in blocks:
         # Look for N: Name="..."
         m_name = re.search(r'^N:\s+Name="([^"]+)"', block, flags=re.M)
         if not m_name:
             continue
-        if m_name.group(1) != device_name:
-            continue
 
-        # Found our device; look for H: Handlers=...
+        # Look for H: Handlers=... and pick the first 'eventX'
+        event_path = None
         m_handlers = re.search(r'^H:\s+Handlers=([^\n]+)', block, flags=re.M)
-        if not m_handlers:
-            continue
+        if m_handlers:
+            for h in m_handlers.group(1).split():
+                if h.startswith("event") and h[5:].isdigit():
+                    event_path = "/dev/input/" + h
+                    break
+        devices.append((m_name.group(1), event_path))
+    return devices
 
-        handlers = m_handlers.group(1).split()
-        # pick the first 'eventX'
-        for h in handlers:
-            if h.startswith("event") and h[5:].isdigit():
-                event_path = "/dev/input/" + h
-                print("Resolved '%s' to %s" % (device_name, event_path))
-                return event_path
 
+def resolve_input_device_by_name(device_name, quiet=False):
+    """
+    Find the input device path by looking for the device_name in /proc/bus/input/devices
+    quiet=True skips the warning when the device isn't found
+    """
+    print("Resolving input device path for device named '%s'" % device_name)
+    devices = read_input_devices()
+    for name, event_path in devices:
+        if name == device_name and event_path:
+            print("Resolved '%s' to %s" % (device_name, event_path))
+            return event_path
+
+    if quiet:
+        print("Device named '%s' not found" % device_name)
+        return None
     print("WARNING: device named '%s' not found in /proc/bus/input/devices" % device_name)
+    print("Available devices: %s" % ", ".join("'%s'" % name for name, _ in devices))
+    return None
+
+
+def resolve_output_device():
+    """
+    Find the device to resend unbound codes to. On webOS 10+ prefer WEBOS_10_OUTPUT_DEVICE_NAME
+    unless output_device_name was set. Then use OUTPUT_DEVICE_NAME if it exists,
+    otherwise fall back to any other 'LGE M-RCU - Builtin [N]' device that isn't INPUT_DEVICE_NAME
+    """
+    if not OUTPUT_DEVICE_NAME_SET and WEBOS_MAJOR_VERSION >= 10 and WEBOS_10_OUTPUT_DEVICE_NAME != INPUT_DEVICE_NAME:
+        output_device_path = resolve_input_device_by_name(WEBOS_10_OUTPUT_DEVICE_NAME, quiet=True)
+        if output_device_path:
+            print("Using '%s' as the output device on webOS 10+" % WEBOS_10_OUTPUT_DEVICE_NAME)
+            return output_device_path
+
+    # The default OUTPUT_DEVICE_NAME is often missing, only warn if it was set in the config
+    output_device_path = resolve_input_device_by_name(OUTPUT_DEVICE_NAME, quiet=not OUTPUT_DEVICE_NAME_SET)
+    if output_device_path:
+        return output_device_path
+
+    for name, event_path in read_input_devices():
+        if name.startswith("LGE M-RCU - Builtin") and name != INPUT_DEVICE_NAME and event_path:
+            print("Falling back to output device '%s' (%s)" % (name, event_path))
+            return event_path
     return None
 
 
 def main():
     """MAIN"""
-    print("Starting Magic Mapper")
+    print("Starting Magic Mapper %s" % VERSION)
     time.sleep(2) # Ensure everything is running before we start
     button_map = get_button_map()
 
@@ -679,7 +829,11 @@ def main():
     WEBOS_MAJOR_VERSION = get_webos_version()
     print("WEBOS_MAJOR_VERSION: %s" % WEBOS_MAJOR_VERSION)
 
-    print("BLOCK_MOUSE is %s" % BLOCK_MOUSE)
+    print("Settings:")
+    print("  block_mouse: %s" % BLOCK_MOUSE)
+    print("  exclusive_mode: %s" % EXCLUSIVE_MODE)
+    print("  input_device_name: '%s'%s" % (INPUT_DEVICE_NAME, "" if INPUT_DEVICE_NAME_SET else " (default)"))
+    print("  output_device_name: '%s'" % (OUTPUT_DEVICE_NAME if OUTPUT_DEVICE_NAME_SET else "auto"))
 
     input_loop(button_map=button_map)
 

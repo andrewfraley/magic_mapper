@@ -1,4 +1,8 @@
 {
+  "magic_mapper_settings": {
+    "block_mouse": false,
+    "exclusive_mode": true
+  },
   "yellow": {
     "function": "set_energy_mode",
     "inputs": {
