@@ -14,15 +14,16 @@ try:
 except ImportError:
     SOCKET_AVAILABLE = False
 
-BLOCK_MOUSE = False  # Set to True to disable the mouse, note EXCLUSIVE_MODE must be True to work
-EXCLUSIVE_MODE = True  # Prevent bound codes from being seen by WebOS, must be True for BLOCK_MOUSE
+VERSION = "1.0.0"
 
-DEVICE_NAME = 'LGE M-RCU - Builtin [0]'   # the exact Name= shown in /proc/bus/input/devices
-# DEVICE_NAME = 'LGE M-RCU - Builtin [1]'   # UNTESTED - Try this for IR remotes
-
-
-OUTPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [2]'  # unbound codes get resent to this device in exclusive mode
+# Default settings. Don't edit these here, override them in the "magic_mapper_settings"
+# section of magic_mapper_config.json instead (see the Settings section of the README)
+BLOCK_MOUSE = False  # block_mouse: disable the mouse, requires EXCLUSIVE_MODE
+EXCLUSIVE_MODE = True  # exclusive_mode: prevent bound codes from being seen by WebOS
+DEVICE_NAME = 'LGE M-RCU - Builtin [0]'  # device_name: the exact Name= shown in /proc/bus/input/devices
+OUTPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [2]'  # output_device_name: unbound codes get resent to this device in exclusive mode
 # If OUTPUT_DEVICE_NAME isn't found, another 'LGE M-RCU - Builtin [N]' device is picked automatically
+OUTPUT_DEVICE_NAME_SET = False  # True when output_device_name was set in the config
 
 
 BUTTONS = {
@@ -383,7 +384,30 @@ def get_button_map():
     config_path = os.path.join(os.path.dirname(__file__), "magic_mapper_config.json")
     with open(config_path) as config_file:
         button_map = json.load(config_file)
+    settings = button_map.pop("magic_mapper_settings", {})
+    apply_settings(settings)
     return button_map
+
+
+def apply_settings(settings):
+    """Override the default settings with the magic_mapper_settings section of the config"""
+    global BLOCK_MOUSE, EXCLUSIVE_MODE, DEVICE_NAME, OUTPUT_DEVICE_NAME, OUTPUT_DEVICE_NAME_SET
+    for key in settings:
+        if key not in ["block_mouse", "exclusive_mode", "device_name", "output_device_name"]:
+            print("WARNING: unknown setting '%s' in magic_mapper_settings" % key)
+
+    if "block_mouse" in settings:
+        BLOCK_MOUSE = str_to_bool(settings["block_mouse"])
+    if "exclusive_mode" in settings:
+        EXCLUSIVE_MODE = str_to_bool(settings["exclusive_mode"])
+    if "device_name" in settings:
+        DEVICE_NAME = settings["device_name"]
+    if "output_device_name" in settings:
+        OUTPUT_DEVICE_NAME = settings["output_device_name"]
+        OUTPUT_DEVICE_NAME_SET = True
+
+    if BLOCK_MOUSE and not EXCLUSIVE_MODE:
+        print("WARNING: block_mouse has no effect unless exclusive_mode is true")
 
 
 def fire_event_one(action):
@@ -540,7 +564,7 @@ def input_loop(button_map):
 
     input_device_path = resolve_input_device_by_name(DEVICE_NAME)
     if input_device_path is None:
-        print("ERROR: could not find input device, check DEVICE_NAME in magic_mapper.py")
+        print("ERROR: could not find input device, check device_name in magic_mapper_config.json")
         sys.exit(1)
     print("Opening input device: %s" % input_device_path)
     input_device = open(input_device_path, "rb")
@@ -550,7 +574,7 @@ def input_loop(button_map):
         fcntl.ioctl(input_device, EVIOCGRAB, 1)
         output_device_path = resolve_output_device()
         if output_device_path is None:
-            print("ERROR: could not find output device, check OUTPUT_DEVICE_NAME in magic_mapper.py")
+            print("ERROR: could not find output device, check output_device_name in magic_mapper_config.json")
             sys.exit(1)
         print("Keys will be resent to: %s" % output_device_path)
         output_device = os.open(output_device_path, os.O_WRONLY)
@@ -671,9 +695,10 @@ def read_input_devices():
     return devices
 
 
-def resolve_input_device_by_name(device_name):
+def resolve_input_device_by_name(device_name, quiet=False):
     """
     Find the input device path by looking for the device_name in /proc/bus/input/devices
+    quiet=True skips the warning when the device isn't found
     """
     print("Resolving input device path for device named '%s'" % device_name)
     devices = read_input_devices()
@@ -682,6 +707,9 @@ def resolve_input_device_by_name(device_name):
             print("Resolved '%s' to %s" % (device_name, event_path))
             return event_path
 
+    if quiet:
+        print("Device named '%s' not found" % device_name)
+        return None
     print("WARNING: device named '%s' not found in /proc/bus/input/devices" % device_name)
     print("Available devices: %s" % ", ".join("'%s'" % name for name, _ in devices))
     return None
@@ -692,7 +720,8 @@ def resolve_output_device():
     Find the device to resend unbound codes to. Use OUTPUT_DEVICE_NAME if it exists,
     otherwise fall back to any other 'LGE M-RCU - Builtin [N]' device that isn't DEVICE_NAME
     """
-    output_device_path = resolve_input_device_by_name(OUTPUT_DEVICE_NAME)
+    # The default OUTPUT_DEVICE_NAME is often missing, only warn if it was set in the config
+    output_device_path = resolve_input_device_by_name(OUTPUT_DEVICE_NAME, quiet=not OUTPUT_DEVICE_NAME_SET)
     if output_device_path:
         return output_device_path
 
@@ -705,7 +734,7 @@ def resolve_output_device():
 
 def main():
     """MAIN"""
-    print("Starting Magic Mapper")
+    print("Starting Magic Mapper %s" % VERSION)
     time.sleep(2) # Ensure everything is running before we start
     button_map = get_button_map()
 
@@ -713,7 +742,8 @@ def main():
     WEBOS_MAJOR_VERSION = get_webos_version()
     print("WEBOS_MAJOR_VERSION: %s" % WEBOS_MAJOR_VERSION)
 
-    print("BLOCK_MOUSE is %s" % BLOCK_MOUSE)
+    print("Settings: block_mouse=%s exclusive_mode=%s device_name='%s' output_device_name='%s'" % (
+        BLOCK_MOUSE, EXCLUSIVE_MODE, DEVICE_NAME, OUTPUT_DEVICE_NAME))
 
     input_loop(button_map=button_map)
 

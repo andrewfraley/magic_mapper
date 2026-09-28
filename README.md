@@ -37,7 +37,7 @@ The script has support to do the the following (default config button):
 
 - Some buttons automatically activate the mouse, you can [disable the mouse](#disable-mouse-experimental) to avoid this, but this will disable the mouse completely.
 - If a button has a long press function (ie 0-9), and it's configured in magic_mapper_config.json, long pressing the button will no longer work.
-- This script attempts to take exclusive control of the remote's input device; this could have unknown unintended consequences. If weird things start happening, edit the script and set `EXCLUSIVE_MODE = False` near the top. Note that with exclusive mode disabled, a button's default behavior will not be blocked, which means you will not be able to ovveride app buttons or buttons such as "guide".
+- This script attempts to take exclusive control of the remote's input device; this could have unknown unintended consequences. If weird things start happening, set `"exclusive_mode": false` in the [settings](#settings). Note that with exclusive mode disabled, a button's default behavior will not be blocked, which means you will not be able to ovveride app buttons or buttons such as "guide".
 
 ## Installation / Setup
 
@@ -58,6 +58,25 @@ chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 
 - Edit magic_mapper_config.json as needed
 - Lastly, reboot the TV (execute the reboot command over SSH, or open the homebrew app, click the cog, click the reboot link.)
+
+## Settings
+
+Settings live in the `magic_mapper_settings` section at the top of magic_mapper_config.json. You should never need to edit magic_mapper.py. Every setting is optional; anything left out uses the default.
+
+```
+"magic_mapper_settings": {
+  "block_mouse": false,
+  "exclusive_mode": true
+}
+```
+
+- `block_mouse` (default `false`) - Prevent WebOS from seeing the Magic Remote mouse, see [Disable Mouse](#disable-mouse-experimental). Requires `exclusive_mode`.
+- `exclusive_mode` (default `true`) - Take exclusive control of the remote so mapped buttons don't also trigger their normal behavior. Set to `false` if weird things start happening, but you won't be able to override app buttons or buttons such as "guide".
+
+These are also supported but normally not needed:
+
+- `device_name` (default `"LGE M-RCU - Builtin [0]"`) - The input device to read, the exact `Name=` shown in `/proc/bus/input/devices`. UNTESTED: try `"LGE M-RCU - Builtin [1]"` for IR remotes.
+- `output_device_name` (default: automatic) - The input device that unmapped button presses are resent to in exclusive mode. By default `"LGE M-RCU - Builtin [2]"` is used if it exists, otherwise another `LGE M-RCU - Builtin` device is picked automatically.
 
 ## Configuring buttons
 
@@ -122,7 +141,7 @@ If none of the entries matched because of the appId restriction, the keypress wi
 
 ## Disabling a button
 
-Use this to completely disable a button. Note this will not work if `EXCLUSIVE_MODE = False`
+Use this to completely disable a button. Note this will not work if `"exclusive_mode": false`
 
 ```
 "netflix": "disabled"
@@ -397,7 +416,7 @@ start_magic_mapper will redirect output to /tmp/magic_mapper.log
 
 ### Disable Mouse (Experimental)
 
-To disable the mouse, edit the script and change `BLOCK_MOUSE = True` near the top.  This will prevent WebOS from seeing that the remote has activated its mouse.  Note that this does not disable the mouse inside the remote, but it prevents WebOS from seeing that it has been activated.  Due to the way this works there could be erratic behavior, please report any problems by [opening an issue](https://github.com/andrewfraley/magic_mapper/issues).
+To disable the mouse, set `"block_mouse": true` in the [settings](#settings).  This will prevent WebOS from seeing that the remote has activated its mouse.  Note that this does not disable the mouse inside the remote, but it prevents WebOS from seeing that it has been activated.  Due to the way this works there could be erratic behavior, please report any problems by [opening an issue](https://github.com/andrewfraley/magic_mapper/issues).
 
 ### send_tcp_command
 
