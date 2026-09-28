@@ -223,6 +223,7 @@ def curl(inputs):
     url = inputs.get("url")
     if not url:
         print("ERROR: curl function called but url not supplied")
+        return
 
     method = inputs.get("method", "GET").upper()
 
@@ -605,12 +606,16 @@ def str_to_bool(value):
 
 def get_webos_version():
     """Return webos version"""
-    with open("/etc/starfish-release") as f:
-        release = f.read()
+    try:
+        with open("/etc/starfish-release") as f:
+            release = f.read()
 
-    version = release.split()[2]
-    major_version = version.split(".")[0]
-    return int(major_version)
+        version = release.split()[2]
+        major_version = version.split(".")[0]
+        return int(major_version)
+    except (OSError, IOError, IndexError, ValueError) as e:
+        print("WARNING: could not determine the WebOS version, assuming an old version: %s" % e)
+        return 0
 
 
 def input_loop(button_map):
