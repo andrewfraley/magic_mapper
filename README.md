@@ -40,6 +40,7 @@ The script has support to do the the following (default config button):
 ## Known Issues
 
 - Some buttons automatically activate the mouse, you can [disable the mouse](#disable-mouse-experimental) to avoid this, but this will disable the mouse completely.
+- On webOS 10, resending button presses through `LGE M-RCU - Builtin [2]` made Back exit the whole app instead of closing a menu, so on webOS 10 and later `LGE M-RCU - Builtin [1]` is used automatically. If buttons you haven't mapped behave strangely while Magic Mapper is running, try setting [`output_device_name`](#settings) to the other Builtin device and please [open an issue](https://github.com/andrewfraley/magic_mapper/issues).
 - If a button has a long press function (ie 0-9), and it's configured in magic_mapper_config.json, long pressing the button will no longer work.
 - This script attempts to take exclusive control of the remote's input device; this could have unknown unintended consequences. If weird things start happening, set `"exclusive_mode": false` in the [settings](#settings). Note that with exclusive mode disabled, a button's default behavior will not be blocked, which means you will not be able to ovveride app buttons or buttons such as "guide".
 
@@ -102,6 +103,7 @@ For example:
 Your button mappings don't need any changes. Also new in 1.0.0:
 
 - Invalid button mappings are reported in /tmp/magic_mapper.log at startup and skipped, instead of crashing the script when the button is pressed.
+- Fixed Back exiting the whole app instead of closing menus on webOS 10.
 - start_magic_mapper restarts Magic Mapper if it crashes, and has `start`, `stop` and `restart` commands, see [Starting and stopping](#starting-and-stopping).
 
 ## Settings
@@ -121,7 +123,7 @@ Settings live in the `magic_mapper_settings` section at the top of magic_mapper_
 These are also supported but normally not needed:
 
 - `device_name` (default `"LGE M-RCU - Builtin [0]"`) - The input device to read, the exact `Name=` shown in `/proc/bus/input/devices`. UNTESTED: try `"LGE M-RCU - Builtin [1]"` for IR remotes.
-- `output_device_name` (default: automatic) - The input device that unmapped button presses are resent to in exclusive mode. By default `"LGE M-RCU - Builtin [2]"` is used if it exists, otherwise another `LGE M-RCU - Builtin` device is picked automatically.
+- `output_device_name` (default: automatic) - The input device that unmapped button presses are resent to in exclusive mode. By default, on webOS 10 and later `"LGE M-RCU - Builtin [1]"` is used (see [Known Issues](#known-issues)); otherwise `"LGE M-RCU - Builtin [2]"` is used if it exists, and if not, another `LGE M-RCU - Builtin` device is picked automatically.
 
 ## Configuring buttons
 

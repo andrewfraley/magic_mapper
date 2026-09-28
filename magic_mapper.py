@@ -25,6 +25,10 @@ DEVICE_NAME = 'LGE M-RCU - Builtin [0]'  # device_name: the exact Name= shown in
 OUTPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [2]'  # output_device_name: unbound codes get resent to this device in exclusive mode
 # If OUTPUT_DEVICE_NAME isn't found, another 'LGE M-RCU - Builtin [N]' device is picked automatically
 OUTPUT_DEVICE_NAME_SET = False  # True when output_device_name was set in the config
+# On webOS 10+, keys resent through Builtin [2] make Back exit the app instead of closing menus,
+# so Builtin [1] is preferred there unless output_device_name is set
+WEBOS_10_OUTPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [1]'
+WEBOS_MAJOR_VERSION = 0  # set in main()
 
 
 BUTTONS = {
@@ -791,9 +795,16 @@ def resolve_input_device_by_name(device_name, quiet=False):
 
 def resolve_output_device():
     """
-    Find the device to resend unbound codes to. Use OUTPUT_DEVICE_NAME if it exists,
+    Find the device to resend unbound codes to. On webOS 10+ prefer WEBOS_10_OUTPUT_DEVICE_NAME
+    unless output_device_name was set. Then use OUTPUT_DEVICE_NAME if it exists,
     otherwise fall back to any other 'LGE M-RCU - Builtin [N]' device that isn't DEVICE_NAME
     """
+    if not OUTPUT_DEVICE_NAME_SET and WEBOS_MAJOR_VERSION >= 10 and WEBOS_10_OUTPUT_DEVICE_NAME != DEVICE_NAME:
+        output_device_path = resolve_input_device_by_name(WEBOS_10_OUTPUT_DEVICE_NAME, quiet=True)
+        if output_device_path:
+            print("Using '%s' as the output device on webOS 10+" % WEBOS_10_OUTPUT_DEVICE_NAME)
+            return output_device_path
+
     # The default OUTPUT_DEVICE_NAME is often missing, only warn if it was set in the config
     output_device_path = resolve_input_device_by_name(OUTPUT_DEVICE_NAME, quiet=not OUTPUT_DEVICE_NAME_SET)
     if output_device_path:
@@ -817,7 +828,7 @@ def main():
     print("WEBOS_MAJOR_VERSION: %s" % WEBOS_MAJOR_VERSION)
 
     print("Settings: block_mouse=%s exclusive_mode=%s device_name='%s' output_device_name='%s'" % (
-        BLOCK_MOUSE, EXCLUSIVE_MODE, DEVICE_NAME, OUTPUT_DEVICE_NAME))
+        BLOCK_MOUSE, EXCLUSIVE_MODE, DEVICE_NAME, OUTPUT_DEVICE_NAME if OUTPUT_DEVICE_NAME_SET else "auto"))
 
     input_loop(button_map=button_map)
 
