@@ -21,9 +21,10 @@ VERSION = "1.0.0"
 # section of magic_mapper_config.json instead (see the Settings section of the README)
 BLOCK_MOUSE = False  # block_mouse: disable the mouse, requires EXCLUSIVE_MODE
 EXCLUSIVE_MODE = True  # exclusive_mode: prevent bound codes from being seen by WebOS
-DEVICE_NAME = 'LGE M-RCU - Builtin [0]'  # device_name: the exact Name= shown in /proc/bus/input/devices
+INPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [0]'  # input_device_name: the exact Name= shown in /proc/bus/input/devices
 OUTPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [2]'  # output_device_name: unbound codes get resent to this device in exclusive mode
 # If OUTPUT_DEVICE_NAME isn't found, another 'LGE M-RCU - Builtin [N]' device is picked automatically
+INPUT_DEVICE_NAME_SET = False  # True when input_device_name was set in the config
 OUTPUT_DEVICE_NAME_SET = False  # True when output_device_name was set in the config
 # On webOS 10+, keys resent through Builtin [2] make Back exit the app instead of closing menus,
 # so Builtin [1] is preferred there unless output_device_name is set
@@ -451,17 +452,18 @@ def validate_button_map(button_map):
 
 def apply_settings(settings):
     """Override the default settings with the magic_mapper_settings section of the config"""
-    global BLOCK_MOUSE, EXCLUSIVE_MODE, DEVICE_NAME, OUTPUT_DEVICE_NAME, OUTPUT_DEVICE_NAME_SET
+    global BLOCK_MOUSE, EXCLUSIVE_MODE, INPUT_DEVICE_NAME, INPUT_DEVICE_NAME_SET, OUTPUT_DEVICE_NAME, OUTPUT_DEVICE_NAME_SET
     for key in settings:
-        if key not in ["block_mouse", "exclusive_mode", "device_name", "output_device_name"]:
+        if key not in ["block_mouse", "exclusive_mode", "input_device_name", "output_device_name"]:
             print("WARNING: unknown setting '%s' in magic_mapper_settings" % key)
 
     if "block_mouse" in settings:
         BLOCK_MOUSE = str_to_bool(settings["block_mouse"])
     if "exclusive_mode" in settings:
         EXCLUSIVE_MODE = str_to_bool(settings["exclusive_mode"])
-    if "device_name" in settings:
-        DEVICE_NAME = settings["device_name"]
+    if "input_device_name" in settings:
+        INPUT_DEVICE_NAME = settings["input_device_name"]
+        INPUT_DEVICE_NAME_SET = True
     if "output_device_name" in settings:
         OUTPUT_DEVICE_NAME = settings["output_device_name"]
         OUTPUT_DEVICE_NAME_SET = True
@@ -629,9 +631,9 @@ def input_loop(button_map):
     event_size = struct.calcsize(input_format)
     buttons_waiting = {}
 
-    input_device_path = resolve_input_device_by_name(DEVICE_NAME)
+    input_device_path = resolve_input_device_by_name(INPUT_DEVICE_NAME)
     if input_device_path is None:
-        print("ERROR: could not find input device, check device_name in magic_mapper_config.json")
+        print("ERROR: could not find input device, check input_device_name in magic_mapper_config.json")
         sys.exit(1)
     print("Opening input device: %s" % input_device_path)
     input_device = open(input_device_path, "rb")
@@ -797,9 +799,9 @@ def resolve_output_device():
     """
     Find the device to resend unbound codes to. On webOS 10+ prefer WEBOS_10_OUTPUT_DEVICE_NAME
     unless output_device_name was set. Then use OUTPUT_DEVICE_NAME if it exists,
-    otherwise fall back to any other 'LGE M-RCU - Builtin [N]' device that isn't DEVICE_NAME
+    otherwise fall back to any other 'LGE M-RCU - Builtin [N]' device that isn't INPUT_DEVICE_NAME
     """
-    if not OUTPUT_DEVICE_NAME_SET and WEBOS_MAJOR_VERSION >= 10 and WEBOS_10_OUTPUT_DEVICE_NAME != DEVICE_NAME:
+    if not OUTPUT_DEVICE_NAME_SET and WEBOS_MAJOR_VERSION >= 10 and WEBOS_10_OUTPUT_DEVICE_NAME != INPUT_DEVICE_NAME:
         output_device_path = resolve_input_device_by_name(WEBOS_10_OUTPUT_DEVICE_NAME, quiet=True)
         if output_device_path:
             print("Using '%s' as the output device on webOS 10+" % WEBOS_10_OUTPUT_DEVICE_NAME)
@@ -811,7 +813,7 @@ def resolve_output_device():
         return output_device_path
 
     for name, event_path in read_input_devices():
-        if name.startswith("LGE M-RCU - Builtin") and name != DEVICE_NAME and event_path:
+        if name.startswith("LGE M-RCU - Builtin") and name != INPUT_DEVICE_NAME and event_path:
             print("Falling back to output device '%s' (%s)" % (name, event_path))
             return event_path
     return None
@@ -830,7 +832,7 @@ def main():
     print("Settings:")
     print("  block_mouse: %s" % BLOCK_MOUSE)
     print("  exclusive_mode: %s" % EXCLUSIVE_MODE)
-    print("  device_name: '%s'" % DEVICE_NAME)
+    print("  input_device_name: '%s'%s" % (INPUT_DEVICE_NAME, "" if INPUT_DEVICE_NAME_SET else " (default)"))
     print("  output_device_name: '%s'" % (OUTPUT_DEVICE_NAME if OUTPUT_DEVICE_NAME_SET else "auto"))
 
     input_loop(button_map=button_map)

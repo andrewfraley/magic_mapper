@@ -86,7 +86,7 @@ Breaking change: settings are no longer edited in magic_mapper.py. If you change
 | --- | --- |
 | `BLOCK_MOUSE = True` | `"block_mouse": true` |
 | `EXCLUSIVE_MODE = False` | `"exclusive_mode": false` |
-| `DEVICE_NAME = '...'` | `"device_name": "..."` |
+| `DEVICE_NAME = '...'` | `"input_device_name": "..."` |
 | `OUTPUT_DEVICE_NAME = '...'` | `"output_device_name": "..."` (usually not needed any more, the output device is now found automatically) |
 
 For example:
@@ -122,7 +122,7 @@ Settings live in the `magic_mapper_settings` section at the top of magic_mapper_
 
 These are also supported but normally not needed:
 
-- `device_name` (default `"LGE M-RCU - Builtin [0]"`) - The input device to read, the exact `Name=` shown in `/proc/bus/input/devices`. UNTESTED: try `"LGE M-RCU - Builtin [1]"` for IR remotes.
+- `input_device_name` (default `"LGE M-RCU - Builtin [0]"`) - The input device to read, the exact `Name=` shown in `/proc/bus/input/devices`. UNTESTED: try `"LGE M-RCU - Builtin [1]"` for IR remotes.
 - `output_device_name` (default: automatic) - The input device that unmapped button presses are resent to in exclusive mode. By default, on webOS 10 and later `"LGE M-RCU - Builtin [1]"` is used (see [Known Issues](#known-issues)); otherwise `"LGE M-RCU - Builtin [2]"` is used if it exists, and if not, another `LGE M-RCU - Builtin` device is picked automatically.
 
 ## Configuring buttons
