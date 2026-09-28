@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import time
+import traceback
 import struct
 import subprocess
 import json
@@ -378,6 +379,27 @@ def toggle_piccap(inputs):
 # The fuctions below here should not be called by magic_mapper_config.json
 ####################################
 
+# The functions above that magic_mapper_config.json is allowed to call.
+# If you add a new function for the config, add it here too.
+CONFIG_FUNCTIONS = (
+    "cycle_energy_mode",
+    "toggle_eye_comfort",
+    "screen_off",
+    "set_energy_mode",
+    "increase_oled_light",
+    "reduce_oled_light",
+    "set_oled_backlight",
+    "launch_app",
+    "send_ir_command",
+    "curl",
+    "press_button",
+    "send_cec_button",
+    "set_dynamic_tone_mapping",
+    "disabled",
+    "send_tcp_command",
+    "toggle_piccap",
+)
+
 
 def get_button_map():
     """Read the json config file"""
@@ -386,7 +408,40 @@ def get_button_map():
         button_map = json.load(config_file)
     settings = button_map.pop("magic_mapper_settings", {})
     apply_settings(settings)
-    return button_map
+    return validate_button_map(button_map)
+
+
+def validate_button_map(button_map):
+    """Check every button mapping at startup and drop the invalid ones so the rest still work"""
+    valid_map = {}
+    for button, actions in button_map.items():
+        if actions == "disabled":
+            valid_map[button] = actions
+            continue
+        if isinstance(actions, dict):
+            action_list = [actions]
+        elif isinstance(actions, list):
+            action_list = actions
+        else:
+            print("ERROR: config for button '%s' must be a dict, a list of dicts, or \"disabled\", ignoring it" % button)
+            continue
+
+        problems = []
+        for action in action_list:
+            if not isinstance(action, dict):
+                problems.append("each entry must be a dict")
+            elif action.get("function") not in CONFIG_FUNCTIONS:
+                problems.append("unknown function '%s'" % action.get("function"))
+            elif not isinstance(action.get("inputs", {}), dict):
+                problems.append("inputs for '%s' must be a dict" % action["function"])
+        if not action_list:
+            problems.append("the list of actions is empty")
+
+        if problems:
+            print("ERROR: config for button '%s' is invalid (%s), ignoring it" % (button, "; ".join(problems)))
+            continue
+        valid_map[button] = actions
+    return valid_map
 
 
 def apply_settings(settings):
@@ -414,6 +469,9 @@ def fire_event_one(action):
     """Execute the function configured for the button"""
     func_name = action["function"]
     print("func_name: %s" % func_name)
+    if func_name not in CONFIG_FUNCTIONS:
+        print("ERROR: function '%s' can't be called from magic_mapper_config.json" % func_name)
+        return
     inputs = action.get("inputs", {})
     globals()[func_name](inputs)
 
@@ -614,8 +672,11 @@ def input_loop(button_map):
             if type(actions) is not list:
                 actions = [actions]
             endpoint = "luna://com.webos.applicationManager/getForegroundAppInfo"
-            current_app = luna_send(endpoint, {})
-            current_app = json.loads(current_app).get('appId')
+            try:
+                current_app = json.loads(luna_send(endpoint, {})).get('appId')
+            except Exception:
+                print("ERROR: could not get the foreground app, only mappings without an appId will be used")
+                traceback.print_exc()
             filtered_actions = []
             found_match = False
             for action in actions:
@@ -653,11 +714,19 @@ def input_loop(button_map):
             elif now - buttons_waiting[code] > 1.0:
                 print("Ignoring long press of %s" % key)
                 # Tell the user that the long press was blocked because of magic mapper; to avoid any confusion.
-                luna_send("luna://com.webos.notification/createToast", {"sourceId":"magic mapper","message":"long press for %s is disabled due to magic mapper" % key})
+                try:
+                    luna_send("luna://com.webos.notification/createToast", {"sourceId":"magic mapper","message":"long press for %s is disabled due to magic mapper" % key})
+                except Exception:
+                    traceback.print_exc()
             else:
                 print("%s button up" % key)
                 print("firing event(s) for code: %s button: %s" % (code, key))
-                fire_events(actions)
+                # Don't let one failing action kill the script
+                try:
+                    fire_events(actions)
+                except Exception:
+                    print("ERROR: action for button %s failed" % key)
+                    traceback.print_exc()
             if code in buttons_waiting:
                 del buttons_waiting[code]
 
