@@ -80,7 +80,7 @@ These are also supported but normally not needed:
 
 ## Configuring buttons
 
-Buttons are configured via the magic_mapper_config.json file. magic_mapper_config.json contains a json formatted dictionary where each primary key is the name of the button to map (see the [Button List](#button-list) below). Note that changes to magic_mapper_config.json require you to restart the script, so just reboot your TV or if testing over SSH, kill the magic_mapper.py process and run the script manually.
+Buttons are configured via the magic_mapper_config.json file. magic_mapper_config.json contains a json formatted dictionary where each primary key is the name of the button to map (see the [Button List](#button-list) below). Note that changes to magic_mapper_config.json require you to restart the script, so just reboot your TV or run `/var/lib/webosbrew/init.d/start_magic_mapper restart` over SSH (see [Starting and stopping](#starting-and-stopping)).
 
 ```
 "yellow": {  # The name of the button to remap, see the Button List below
@@ -173,6 +173,18 @@ If you wanted to replace the Amazon Prime button with Plex:
 ## Logs
 
 start_magic_mapper will redirect output to /tmp/magic_mapper.log
+
+## Starting and stopping
+
+start_magic_mapper runs Magic Mapper in the background and restarts it automatically if it exits. If it exits 5 times in a row within 30 seconds of starting (for example because of a bad config), it gives up; check /tmp/magic_mapper.log for the errors.
+
+```
+/var/lib/webosbrew/init.d/start_magic_mapper stop     # stop Magic Mapper
+/var/lib/webosbrew/init.d/start_magic_mapper start    # start it again
+/var/lib/webosbrew/init.d/start_magic_mapper restart  # restart it, e.g. after editing magic_mapper_config.json
+```
+
+Killing the python process (even with `kill -9`) will just cause it to be restarted, so use `stop` instead. To test changes over SSH, run `start_magic_mapper stop` and then run `python magic_mapper.py` (or `python3 magic_mapper.py`) manually so you can watch the output.
 
 ## Function List
 

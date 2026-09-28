@@ -4,10 +4,82 @@
 # run chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 # Note the homebrew script that executes this won't work if you add an extension like .sh,
 # so be sure to leave off the extension
+#
+# Usage: start_magic_mapper [start|stop|restart]
+# With no argument (how the homebrew app runs it at boot) it starts Magic Mapper.
+# magic_mapper.py is restarted automatically if it exits, so use
+# "start_magic_mapper stop" to stop it rather than killing the python process.
 
+SCRIPT=/home/root/magic_mapper.py
+LOG=/tmp/magic_mapper.log
+PIDFILE=/tmp/magic_mapper.pid
+PYTHON_PIDFILE=/tmp/magic_mapper_python.pid
+RESTART_DELAY=5         # seconds to wait before restarting
+FAST_CRASH_SECONDS=30   # an exit sooner than this after starting counts as a fast crash
+MAX_FAST_CRASHES=5      # give up after this many fast crashes in a row
 
-if [ -f "/usr/bin/python" ]; then
-  nohup /usr/bin/python -u /home/root/magic_mapper.py > /tmp/magic_mapper.log 2>&1 &
-else
-  nohup /usr/bin/python3 -u /home/root/magic_mapper.py > /tmp/magic_mapper.log 2>&1 &
-fi
+is_running() {
+  [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null
+}
+
+start() {
+  if is_running; then
+    echo "Magic Mapper is already running (pid $(cat "$PIDFILE"))"
+    return 0
+  fi
+  : > "$LOG"
+  nohup "$0" run >> "$LOG" 2>&1 &
+  echo "Magic Mapper started, logging to $LOG"
+}
+
+stop() {
+  # Stop the restart loop first so it doesn't restart magic_mapper.py
+  if [ -f "$PIDFILE" ] && kill "$(cat "$PIDFILE")" 2>/dev/null; then
+    echo "Stopped the restart loop"
+  fi
+  if [ -f "$PYTHON_PIDFILE" ] && kill "$(cat "$PYTHON_PIDFILE")" 2>/dev/null; then
+    echo "Stopped magic_mapper.py"
+  fi
+  rm -f "$PIDFILE" "$PYTHON_PIDFILE"
+}
+
+run() {
+  echo $$ > "$PIDFILE"
+  if [ -f "/usr/bin/python" ]; then
+    PYTHON=/usr/bin/python
+  else
+    PYTHON=/usr/bin/python3
+  fi
+
+  fast_crashes=0
+  while true; do
+    started=$(date +%s)
+    "$PYTHON" -u "$SCRIPT" &
+    echo $! > "$PYTHON_PIDFILE"
+    wait $!
+    status=$?
+    ran=$(( $(date +%s) - started ))
+    echo "$(date): magic_mapper.py exited with status $status after ${ran}s"
+
+    if [ "$ran" -lt "$FAST_CRASH_SECONDS" ]; then
+      fast_crashes=$((fast_crashes + 1))
+    else
+      fast_crashes=0
+    fi
+    if [ "$fast_crashes" -ge "$MAX_FAST_CRASHES" ]; then
+      echo "$(date): magic_mapper.py exited $fast_crashes times in a row, giving up. Check the errors above."
+      rm -f "$PIDFILE" "$PYTHON_PIDFILE"
+      exit 1
+    fi
+    echo "Restarting in ${RESTART_DELAY}s"
+    sleep "$RESTART_DELAY"
+  done
+}
+
+case "$1" in
+  ""|start) start ;;
+  stop) stop ;;
+  restart) stop; sleep 1; start ;;
+  run) run ;;
+  *) echo "Usage: $0 [start|stop|restart]"; exit 1 ;;
+esac
