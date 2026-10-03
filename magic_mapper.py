@@ -22,7 +22,7 @@ try:
 except ImportError:
     SELECT_AVAILABLE = False
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 # Default settings. Don't edit these here, override them in the "magic_mapper_settings"
 # section of magic_mapper_config.json instead (see the Settings section of the README)
