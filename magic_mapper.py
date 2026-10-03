@@ -15,13 +15,23 @@ try:
 except ImportError:
     SOCKET_AVAILABLE = False
 
-VERSION = "1.0.0"
+# We need select to read more than one input device (the IR receiver), it may be missing too
+try:
+    import select
+    SELECT_AVAILABLE = True
+except ImportError:
+    SELECT_AVAILABLE = False
+
+VERSION = "1.1.0"
 
 # Default settings. Don't edit these here, override them in the "magic_mapper_settings"
 # section of magic_mapper_config.json instead (see the Settings section of the README)
 BLOCK_MOUSE = False  # block_mouse: disable the mouse, requires EXCLUSIVE_MODE
-EXCLUSIVE_MODE = True  # exclusive_mode: prevent bound codes from being seen by WebOS
+EXCLUSIVE_MODE = True  # exclusive_mode: prevent bound codes from the input device from being seen by WebOS
 INPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [0]'  # input_device_name: the exact Name= shown in /proc/bus/input/devices
+IR_INPUT_ENABLED = False  # ir_input_enabled: also read button presses from the IR receiver
+IR_INPUT_DEVICE_NAME = 'LGE RCU'  # ir_input_device_name: the exact Name= of the IR receiver in /proc/bus/input/devices
+IR_EXCLUSIVE_MODE = True  # ir_exclusive_mode: grab the IR device so mapped IR buttons don't also do their normal action
 OUTPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [2]'  # output_device_name: unbound codes get resent to this device in exclusive mode
 # If OUTPUT_DEVICE_NAME isn't found, another 'LGE M-RCU - Builtin [N]' device is picked automatically
 INPUT_DEVICE_NAME_SET = False  # True when input_device_name was set in the config
@@ -380,6 +390,56 @@ def toggle_piccap(inputs):
     luna_send(endpoint, {})
     print("PicCap service %s" % action)
 
+
+def toggle_bluetooth(inputs):
+    """Toggle the WebOS bluetooth service on or off.
+
+    Disabling bluetooth turns the Magic Remote into an IR-only remote (only the
+    IR functions keep working), but stops unwanted bluetooth connection requests.
+    This starts/stops the same webos-bluetooth-service that the webOS Bluetooth
+    Disabler app controls; magic_mapper already runs as root so it can call the
+    init system directly instead of going through the Homebrew Channel service.
+
+    Inputs:
+        notifications (bool, default: False) - show a toast with the new state
+    """
+    init_system = get_init_system()
+    if not init_system:
+        print("ERROR: could not determine init system, cannot toggle bluetooth")
+        if inputs.get("notifications"):
+            show_message("Bluetooth toggle failed")
+        return
+
+    active = bluetooth_is_active(init_system)
+
+    if active:
+        new_state = "off"
+        if init_system == "systemd":
+            command = ["systemctl", "stop", "webos-bluetooth-service.service"]
+        else:
+            command = ["stop", "webos-bluetooth-service"]
+    else:
+        new_state = "on"
+        if init_system == "systemd":
+            command = ["systemctl", "start", "webos-bluetooth-service.service"]
+        else:
+            command = ["start", "webos-bluetooth-service"]
+
+    print("Bluetooth service is %s, turning it %s" % (
+        "active" if active else "inactive", new_state))
+
+    try:
+        subprocess.check_call(command)
+    except (subprocess.CalledProcessError, OSError) as error:
+        print("WARNING: failed to toggle bluetooth: %s" % error)
+        if inputs.get("notifications"):
+            show_message("Bluetooth toggle failed")
+        return
+
+    print("Bluetooth turned %s" % new_state)
+    if inputs.get("notifications"):
+        show_message("Bluetooth: %s" % new_state)
+
 ###################################
 # Private Functions
 # The fuctions below here should not be called by magic_mapper_config.json
@@ -404,6 +464,7 @@ CONFIG_FUNCTIONS = (
     "disabled",
     "send_tcp_command",
     "toggle_piccap",
+    "toggle_bluetooth",
 )
 
 
@@ -453,8 +514,10 @@ def validate_button_map(button_map):
 def apply_settings(settings):
     """Override the default settings with the magic_mapper_settings section of the config"""
     global BLOCK_MOUSE, EXCLUSIVE_MODE, INPUT_DEVICE_NAME, INPUT_DEVICE_NAME_SET, OUTPUT_DEVICE_NAME, OUTPUT_DEVICE_NAME_SET
+    global IR_INPUT_ENABLED, IR_INPUT_DEVICE_NAME, IR_EXCLUSIVE_MODE
     for key in settings:
-        if key not in ["block_mouse", "exclusive_mode", "input_device_name", "output_device_name"]:
+        if key not in ["block_mouse", "exclusive_mode", "input_device_name", "output_device_name",
+                       "ir_input_enabled", "ir_input_device_name", "ir_exclusive_mode"]:
             print("WARNING: unknown setting '%s' in magic_mapper_settings" % key)
 
     if "block_mouse" in settings:
@@ -467,9 +530,17 @@ def apply_settings(settings):
     if "output_device_name" in settings:
         OUTPUT_DEVICE_NAME = settings["output_device_name"]
         OUTPUT_DEVICE_NAME_SET = True
+    if "ir_input_enabled" in settings:
+        IR_INPUT_ENABLED = str_to_bool(settings["ir_input_enabled"])
+    if "ir_input_device_name" in settings:
+        IR_INPUT_DEVICE_NAME = settings["ir_input_device_name"]
+    if "ir_exclusive_mode" in settings:
+        IR_EXCLUSIVE_MODE = str_to_bool(settings["ir_exclusive_mode"])
 
     if BLOCK_MOUSE and not EXCLUSIVE_MODE:
         print("WARNING: block_mouse has no effect unless exclusive_mode is true")
+    if "ir_exclusive_mode" in settings and IR_EXCLUSIVE_MODE and not IR_INPUT_ENABLED:
+        print("WARNING: ir_exclusive_mode has no effect unless ir_input_enabled is true")
 
 
 def fire_event_one(action):
@@ -624,32 +695,152 @@ def get_webos_version():
         return 0
 
 
+def get_init_system():
+    """Detect whether the TV uses systemd or upstart.
+
+    On systemd TVs /sbin/init is a symlink to systemd. Upstart TVs have a plain
+    /sbin/init, so look for upstart's initctl instead.
+    Returns "systemd", "upstart", or None if unknown.
+    """
+    if "systemd" in os.path.realpath("/sbin/init"):
+        return "systemd"
+    if os.path.exists("/sbin/initctl"):
+        return "upstart"
+    print("WARNING: could not determine the init system")
+    return None
+
+
+def bluetooth_is_active(init_system):
+    """Return True if the webos-bluetooth-service is currently running."""
+    if init_system == "systemd":
+        # `systemctl is-active` prints "active" and exits 0 when running, or
+        # prints "inactive"/"failed" and exits non-zero when not.
+        try:
+            output = subprocess.check_output(
+                ["systemctl", "is-active", "webos-bluetooth-service.service"])
+        except subprocess.CalledProcessError as error:
+            output = error.output or b""
+        except OSError as error:
+            print("WARNING: could not query bluetooth status: %s" % error)
+            return False
+        return output.decode("utf-8", "replace").strip() == "active"
+
+    # upstart: `status webos-bluetooth-service` prints "... start/running"
+    # when up and "... stop/waiting" when down.
+    try:
+        output = subprocess.check_output(["status", "webos-bluetooth-service"])
+    except (subprocess.CalledProcessError, OSError) as error:
+        print("WARNING: could not query bluetooth status: %s" % error)
+        return False
+    return "start/running" in output.decode("utf-8", "replace")
+
+
+def open_source_device(device_name, grab):
+    """Resolve, open, and (optionally) grab an input device.
+
+    Returns a dict describing the source, or None if it could not be opened.
+    The device is opened unbuffered (os.open/os.read): a buffered file would
+    pull several events into Python's buffer where select() can't see them,
+    delaying key ups until the next press.
+    """
+    path = resolve_input_device_by_name(device_name)
+    if not path:
+        print("WARNING: could not resolve input device '%s'" % device_name)
+        return None
+
+    try:
+        fd = os.open(path, os.O_RDONLY)
+    except (IOError, OSError) as error:
+        print("WARNING: could not open input device '%s' (%s): %s" % (device_name, path, error))
+        return None
+
+    grabbed = False
+    if grab:
+        try:
+            fcntl.ioctl(fd, EVIOCGRAB, 1)
+            grabbed = True
+            print("Exclusive mode: grabbed input device '%s' (%s)" % (device_name, path))
+        except (IOError, OSError) as error:
+            print("WARNING: could not grab '%s' (%s): %s" % (device_name, path, error))
+
+    print("Opened input device '%s' (%s)" % (device_name, path))
+    return {"name": device_name, "path": path, "fd": fd, "grabbed": grabbed}
+
+
+def open_output_device():
+    """Open the device unmapped events are resent to in exclusive mode, or return None"""
+    output_device_path = resolve_output_device()
+    if output_device_path is None:
+        return None
+    try:
+        output_device = os.open(output_device_path, os.O_WRONLY)
+    except (IOError, OSError) as error:
+        print("WARNING: could not open output device %s: %s" % (output_device_path, error))
+        return None
+    print("Keys will be resent to: %s" % output_device_path)
+    return output_device
+
+
+def resend_event(output, event):
+    """Resend an unmapped event to the output device, reopening the device once if the write fails"""
+    if output["fd"] is not None:
+        try:
+            os.write(output["fd"], event)
+            return
+        except (IOError, OSError) as error:
+            print("WARNING: could not resend event to the output device, reopening it: %s" % error)
+            try:
+                os.close(output["fd"])
+            except (IOError, OSError):
+                pass
+    output["fd"] = open_output_device()
+    if output["fd"] is None:
+        print("ERROR: no output device, dropping event")
+        return
+    try:
+        os.write(output["fd"], event)
+    except (IOError, OSError) as error:
+        print("ERROR: could not resend event to the output device, dropping it: %s" % error)
+
+
 def input_loop(button_map):
-    # Read from the input device
+    # Read from the input device(s)
     # https://stackoverflow.com/a/16682549/866057
     input_format = "llHHi"
     event_size = struct.calcsize(input_format)
     buttons_waiting = {}
 
-    input_device_path = resolve_input_device_by_name(INPUT_DEVICE_NAME)
-    if input_device_path is None:
-        print("ERROR: could not find input device, check input_device_name in magic_mapper_config.json")
-        sys.exit(1)
-    print("Opening input device: %s" % input_device_path)
-    input_device = open(input_device_path, "rb")
+    # (device name, grab) for every device we read: the remote over bluetooth,
+    # and if ir_input_enabled is true the IR receiver, which gets the remote's
+    # presses while bluetooth is off
+    wanted = [(INPUT_DEVICE_NAME, EXCLUSIVE_MODE)]
+    if IR_INPUT_ENABLED:
+        if not SELECT_AVAILABLE:
+            print("WARNING: the select library isn't available, IR input is disabled")
+        elif IR_INPUT_DEVICE_NAME == INPUT_DEVICE_NAME:
+            print("ir_input_device_name is the same as input_device_name, not reading it twice")
+        else:
+            wanted.append((IR_INPUT_DEVICE_NAME, IR_EXCLUSIVE_MODE))
 
-    if EXCLUSIVE_MODE:
-        print("EXCLUSIVE_MODE is enabled, taking over input device")
-        fcntl.ioctl(input_device, EVIOCGRAB, 1)
-        output_device_path = resolve_output_device()
-        if output_device_path is None:
-            print("ERROR: could not find output device, check output_device_name in magic_mapper_config.json")
-            sys.exit(1)
-        print("Keys will be resent to: %s" % output_device_path)
-        output_device = os.open(output_device_path, os.O_WRONLY)
+    output = {"fd": None}
+    if [name for name, grab in wanted if grab]:
+        print("Exclusive mode is enabled, taking over input device(s)")
+        output["fd"] = open_output_device()
+        if output["fd"] is None:
+            # Carry on without exclusive mode rather than exiting, so the buttons still work
+            print("ERROR: could not find output device, check output_device_name in magic_mapper_config.json. Continuing without exclusive mode")
+            wanted = [(name, False) for name, grab in wanted]
     else:
         print("EXCLUSIVE_MODE is disabled, will not override default button behavior")
-        output_device = None
+
+    sources = {}  # fd -> source dict from open_source_device()
+    for name, grab in wanted:
+        source = open_source_device(name, grab)
+        if source:
+            sources[source["fd"]] = source
+    if not sources:
+        print("ERROR: could not find input device, check input_device_name in magic_mapper_config.json")
+        sys.exit(1)
 
     first_loop = 2
     while True:
@@ -658,88 +849,112 @@ def input_loop(button_map):
             print("First loop complete, Magic Mapper is running")
             first_loop = 0
         elif first_loop == 2:
-            print("Input loop started, waiting for button presses")
+            print("Input loop started, waiting for button presses on %d device(s)" % len(sources))
             first_loop = 1
 
+        if SELECT_AVAILABLE:
+            readable = select.select(list(sources), [], [])[0]
+        else:
+            readable = list(sources)  # only one device without select, a blocking read is fine
 
-        event = input_device.read(event_size)
-        (tv_sec, tv_usec, event_type, code, value) = struct.unpack(input_format, event)
-
-        now = time.time()
-        key = None
-        if event_type == 1:
-            key = BUTTONS.get(code)
-        elif event_type == 2:
-            code = value # up/down
-            key = MOUSE_WHEEL.get(code)
-            value = 0
-            buttons_waiting[code] = now
-        actions = button_map.get(key)
-        if actions == "disabled":
-            print("Button %s is disabled" % key)
-            continue
-        current_app = None
-        if actions:
-            if type(actions) is not list:
-                actions = [actions]
-            endpoint = "luna://com.webos.applicationManager/getForegroundAppInfo"
+        for fd in readable:
+            source = sources[fd]
             try:
-                current_app = json.loads(luna_send(endpoint, {})).get('appId')
+                event = os.read(fd, event_size)
+            except (IOError, OSError) as error:
+                event = None
+                print("WARNING: could not read input device '%s': %s" % (source["name"], error))
+            if not event:
+                # Exit so start_magic_mapper restarts us and reopens the devices
+                print("ERROR: lost input device '%s', exiting" % source["name"])
+                sys.exit(1)
+            handle_event(event, input_format, source, button_map, buttons_waiting, output)
+
+
+def handle_event(event, input_format, source, button_map, buttons_waiting, output):
+    """Process a single input event read from one of the source devices."""
+    (tv_sec, tv_usec, event_type, code, value) = struct.unpack(input_format, event)
+
+    now = time.time()
+    key = None
+    if event_type == 1:
+        key = BUTTONS.get(code)
+    elif event_type == 2:
+        code = value  # up/down
+        key = MOUSE_WHEEL.get(code)
+        value = 0
+        buttons_waiting[(source["name"], code)] = now
+
+    actions = button_map.get(key)
+    if actions == "disabled":
+        print("Button %s is disabled" % key)
+        return
+
+    current_app = None
+    if actions:
+        if type(actions) is not list:
+            actions = [actions]
+        endpoint = "luna://com.webos.applicationManager/getForegroundAppInfo"
+        try:
+            current_app = json.loads(luna_send(endpoint, {})).get('appId')
+        except Exception:
+            print("ERROR: could not get the foreground app, only mappings without an appId will be used")
+            traceback.print_exc()
+        filtered_actions = []
+        found_match = False
+        for action in actions:
+            appId = action.get('appId')
+            if appId is None:
+                filtered_actions += [action]
+            if appId == current_app:
+                filtered_actions += [action]
+                found_match = True
+            if appId == '!' and not found_match:
+                filtered_actions += [action]
+        actions = filtered_actions
+
+    if not actions:
+        # In exclusive mode we resend unhandled events so others can read them.
+        # Only grabbed devices need this, ungrabbed devices already deliver their events normally.
+        if source["grabbed"] and not (BLOCK_MOUSE and code == 1198):
+            resend_event(output, event)
+        if key and value == 1:
+            print("Button %s not configured in magic_mapper_config.json (device: %s, code: %s)" % (key, source["name"], code))
+        elif value == 1:
+            print("Button code %s ignored (device: %s)" % (code, source["name"]))
+        return
+
+    wait_key = (source["name"], code)
+
+    # Button Down
+    if value == 1:
+        print("%s button down (device: %s)" % (key, source["name"]))
+        if wait_key in buttons_waiting and now - buttons_waiting[wait_key] < 1.0:
+            print("WARNING: Got code %s DOWN while waiting for UP" % code)
+        buttons_waiting[wait_key] = now
+
+    # Button Up
+    if value == 0:
+        if wait_key not in buttons_waiting:
+            print("WARNING: Got code %s UP with no DOWN" % code)
+        elif now - buttons_waiting[wait_key] > 1.0:
+            print("Ignoring long press of %s" % key)
+            # Tell the user that the long press was blocked because of magic mapper; to avoid any confusion.
+            try:
+                luna_send("luna://com.webos.notification/createToast", {"sourceId":"magic mapper","message":"long press for %s is disabled due to magic mapper" % key})
             except Exception:
-                print("ERROR: could not get the foreground app, only mappings without an appId will be used")
                 traceback.print_exc()
-            filtered_actions = []
-            found_match = False
-            for action in actions:
-                appId = action.get('appId')
-                if appId is None:
-                    filtered_actions += [action]
-                if appId == current_app:
-                    filtered_actions += [action]
-                    found_match = True
-                if appId == '!' and not found_match:
-                    filtered_actions += [action]
-            actions = filtered_actions
-
-        if not actions:
-            # If in exclusive mode, we need to send the input event back so it can be read by others
-            if EXCLUSIVE_MODE and not (BLOCK_MOUSE and code == 1198):
-                os.write(output_device, event)
-            if key and value == 1:
-                print("Button %s not configured in magic_mapper_config.json" % key)
-            elif value == 1:
-                print("Button code %s ignored" % code)
-            continue
-
-        # Button Down
-        if value == 1:
-            print("%s button down" % key)
-            if code in buttons_waiting and now - buttons_waiting[code] < 1.0:
-                print("WARNING: Got code %s DOWN while waiting for UP" % code)
-            buttons_waiting[code] = now
-
-        # Button Up
-        if value == 0:
-            if code not in buttons_waiting:
-                print("WARNING: Got code %s UP with no DOWN" % code)
-            elif now - buttons_waiting[code] > 1.0:
-                print("Ignoring long press of %s" % key)
-                # Tell the user that the long press was blocked because of magic mapper; to avoid any confusion.
-                try:
-                    luna_send("luna://com.webos.notification/createToast", {"sourceId":"magic mapper","message":"long press for %s is disabled due to magic mapper" % key})
-                except Exception:
-                    traceback.print_exc()
-            else:
-                print("%s button up" % key)
-                print("firing event(s) for code: %s button: %s" % (code, key))
-                # Don't let one failing action kill the script
-                try:
-                    fire_events(actions)
-                except Exception:
-                    print("ERROR: action for button %s failed" % key)
-                    traceback.print_exc()
-            if code in buttons_waiting:
-                del buttons_waiting[code]
+        else:
+            print("%s button up (device: %s)" % (key, source["name"]))
+            print("firing event(s) for code: %s button: %s" % (code, key))
+            # Don't let one failing action kill the script
+            try:
+                fire_events(actions)
+            except Exception:
+                print("ERROR: action for button %s failed" % key)
+                traceback.print_exc()
+        if wait_key in buttons_waiting:
+            del buttons_waiting[wait_key]
 
 
 def read_input_devices():
@@ -834,6 +1049,9 @@ def main():
     print("  exclusive_mode: %s" % EXCLUSIVE_MODE)
     print("  input_device_name: '%s'%s" % (INPUT_DEVICE_NAME, "" if INPUT_DEVICE_NAME_SET else " (default)"))
     print("  output_device_name: '%s'" % (OUTPUT_DEVICE_NAME if OUTPUT_DEVICE_NAME_SET else "auto"))
+    print("  ir_input_enabled: %s" % IR_INPUT_ENABLED)
+    print("  ir_input_device_name: '%s'" % IR_INPUT_DEVICE_NAME)
+    print("  ir_exclusive_mode: %s" % IR_EXCLUSIVE_MODE)
 
     input_loop(button_map=button_map)
 

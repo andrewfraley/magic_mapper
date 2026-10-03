@@ -1,7 +1,9 @@
 {
   "magic_mapper_settings": {
     "block_mouse": false,
-    "exclusive_mode": true
+    "exclusive_mode": true,
+    "ir_input_enabled": false,
+    "ir_exclusive_mode": true
   },
   "yellow": {
     "function": "cycle_energy_mode",

@@ -39,7 +39,9 @@ The maintainer tests on real TVs (webOS 4 and webOS 7 at least).
 
 ## Release checklist
 
+Every PR is a release: bump the version in the PR itself unless it only changes documentation (README, CLAUDE.md, `notes/`, comments). Use semver: patch for fixes, minor for new functions or settings, major for changes that break existing setups.
+
 - Bump `VERSION` in `magic_mapper.py`.
-- Bump the tag in the README install and upgrade `wget` URLs.
+- Bump the tag in the README install and upgrade `wget` URLs (all of them, including `list_apps.py`).
 - If anything breaks existing setups, add an "Upgrading to X" section to the README.
 - The maintainer creates the git tag and GitHub release.
