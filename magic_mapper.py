@@ -7,7 +7,6 @@ import struct
 import subprocess
 import json
 import fcntl
-import select
 
 # We need the socket library for send_tcp_command(), but this isn't always installed in WebOS
 try:
@@ -16,13 +15,23 @@ try:
 except ImportError:
     SOCKET_AVAILABLE = False
 
+# We need select to read more than one input device (the IR receiver), it may be missing too
+try:
+    import select
+    SELECT_AVAILABLE = True
+except ImportError:
+    SELECT_AVAILABLE = False
+
 VERSION = "1.0.0"
 
 # Default settings. Don't edit these here, override them in the "magic_mapper_settings"
 # section of magic_mapper_config.json instead (see the Settings section of the README)
 BLOCK_MOUSE = False  # block_mouse: disable the mouse, requires EXCLUSIVE_MODE
-EXCLUSIVE_MODE = True  # exclusive_mode: prevent bound codes from being seen by WebOS
+EXCLUSIVE_MODE = True  # exclusive_mode: prevent bound codes from the input device from being seen by WebOS
 INPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [0]'  # input_device_name: the exact Name= shown in /proc/bus/input/devices
+IR_INPUT_ENABLED = False  # ir_input_enabled: also read button presses from the IR receiver
+IR_INPUT_DEVICE_NAME = 'LGE RCU'  # ir_input_device_name: the exact Name= of the IR receiver in /proc/bus/input/devices
+IR_EXCLUSIVE_MODE = True  # ir_exclusive_mode: grab the IR device so mapped IR buttons don't also do their normal action
 OUTPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [2]'  # output_device_name: unbound codes get resent to this device in exclusive mode
 # If OUTPUT_DEVICE_NAME isn't found, another 'LGE M-RCU - Builtin [N]' device is picked automatically
 INPUT_DEVICE_NAME_SET = False  # True when input_device_name was set in the config
@@ -31,19 +40,6 @@ OUTPUT_DEVICE_NAME_SET = False  # True when output_device_name was set in the co
 # so Builtin [1] is preferred there unless output_device_name is set
 WEBOS_10_OUTPUT_DEVICE_NAME = 'LGE M-RCU - Builtin [1]'
 WEBOS_MAJOR_VERSION = 0  # set in main()
-
-# When Bluetooth is turned off the Magic Remote falls back to IR, and those
-# presses arrive on this separate IR receiver device instead of the Bluetooth
-# INPUT_DEVICE_NAME device above. Listening to it lets mapped buttons (e.g. a
-# button bound to toggle_bluetooth) keep working while Bluetooth is off, so you
-# can turn Bluetooth back on from the remote. This device is never grabbed, and
-# its presses only trigger mappings while Bluetooth is actually off (so buttons
-# that emit both IR and Bluetooth don't fire twice). Set to None to disable the
-# IR fallback. Run the script manually and press buttons with Bluetooth off to
-# confirm the device name and see the IR keycodes it emits.
-IR_FALLBACK_DEVICE_NAME = 'LGE RCU'
-
-INIT_SYSTEM = None  # cached by main(): "systemd", "upstart", or None if unknown
 
 
 BUTTONS = {
@@ -410,6 +406,8 @@ def toggle_bluetooth(inputs):
     init_system = get_init_system()
     if not init_system:
         print("ERROR: could not determine init system, cannot toggle bluetooth")
+        if inputs.get("notifications"):
+            show_message("Bluetooth toggle failed")
         return
 
     active = bluetooth_is_active(init_system)
@@ -434,6 +432,8 @@ def toggle_bluetooth(inputs):
         subprocess.check_call(command)
     except (subprocess.CalledProcessError, OSError) as error:
         print("WARNING: failed to toggle bluetooth: %s" % error)
+        if inputs.get("notifications"):
+            show_message("Bluetooth toggle failed")
         return
 
     print("Bluetooth turned %s" % new_state)
@@ -514,8 +514,10 @@ def validate_button_map(button_map):
 def apply_settings(settings):
     """Override the default settings with the magic_mapper_settings section of the config"""
     global BLOCK_MOUSE, EXCLUSIVE_MODE, INPUT_DEVICE_NAME, INPUT_DEVICE_NAME_SET, OUTPUT_DEVICE_NAME, OUTPUT_DEVICE_NAME_SET
+    global IR_INPUT_ENABLED, IR_INPUT_DEVICE_NAME, IR_EXCLUSIVE_MODE
     for key in settings:
-        if key not in ["block_mouse", "exclusive_mode", "input_device_name", "output_device_name"]:
+        if key not in ["block_mouse", "exclusive_mode", "input_device_name", "output_device_name",
+                       "ir_input_enabled", "ir_input_device_name", "ir_exclusive_mode"]:
             print("WARNING: unknown setting '%s' in magic_mapper_settings" % key)
 
     if "block_mouse" in settings:
@@ -528,9 +530,17 @@ def apply_settings(settings):
     if "output_device_name" in settings:
         OUTPUT_DEVICE_NAME = settings["output_device_name"]
         OUTPUT_DEVICE_NAME_SET = True
+    if "ir_input_enabled" in settings:
+        IR_INPUT_ENABLED = str_to_bool(settings["ir_input_enabled"])
+    if "ir_input_device_name" in settings:
+        IR_INPUT_DEVICE_NAME = settings["ir_input_device_name"]
+    if "ir_exclusive_mode" in settings:
+        IR_EXCLUSIVE_MODE = str_to_bool(settings["ir_exclusive_mode"])
 
     if BLOCK_MOUSE and not EXCLUSIVE_MODE:
         print("WARNING: block_mouse has no effect unless exclusive_mode is true")
+    if "ir_exclusive_mode" in settings and IR_EXCLUSIVE_MODE and not IR_INPUT_ENABLED:
+        print("WARNING: ir_exclusive_mode has no effect unless ir_input_enabled is true")
 
 
 def fire_event_one(action):
@@ -688,20 +698,15 @@ def get_webos_version():
 def get_init_system():
     """Detect whether the TV uses systemd or upstart.
 
-    Mirrors the detection the webOS Bluetooth Disabler scripts do with
-    `stat /sbin/init`. Returns "systemd", "upstart", or None if unknown.
+    On systemd TVs /sbin/init is a symlink to systemd. Upstart TVs have a plain
+    /sbin/init, so look for upstart's initctl instead.
+    Returns "systemd", "upstart", or None if unknown.
     """
-    try:
-        stat_output = subprocess.check_output(["stat", "/sbin/init"])
-    except (subprocess.CalledProcessError, OSError) as error:
-        print("WARNING: could not stat /sbin/init: %s" % error)
-        return None
-
-    stat_output = stat_output.decode("utf-8", "replace")
-    if "systemd" in stat_output:
+    if "systemd" in os.path.realpath("/sbin/init"):
         return "systemd"
-    if "upstart" in stat_output:
+    if os.path.exists("/sbin/initctl"):
         return "upstart"
+    print("WARNING: could not determine the init system")
     return None
 
 
@@ -734,17 +739,17 @@ def open_source_device(device_name, grab):
     """Resolve, open, and (optionally) grab an input device.
 
     Returns a dict describing the source, or None if it could not be opened.
-    A device that can't be resolved/opened is skipped with a warning rather
-    than being fatal, so (for example) a missing IR fallback device on some TV
-    model doesn't stop the whole script.
+    The device is opened unbuffered (os.open/os.read): a buffered file would
+    pull several events into Python's buffer where select() can't see them,
+    delaying key ups until the next press.
     """
     path = resolve_input_device_by_name(device_name)
     if not path:
-        print("WARNING: could not resolve input device '%s', skipping it" % device_name)
+        print("WARNING: could not resolve input device '%s'" % device_name)
         return None
 
     try:
-        device_file = open(path, "rb")
+        fd = os.open(path, os.O_RDONLY)
     except (IOError, OSError) as error:
         print("WARNING: could not open input device '%s' (%s): %s" % (device_name, path, error))
         return None
@@ -752,57 +757,91 @@ def open_source_device(device_name, grab):
     grabbed = False
     if grab:
         try:
-            fcntl.ioctl(device_file, EVIOCGRAB, 1)
+            fcntl.ioctl(fd, EVIOCGRAB, 1)
             grabbed = True
-            print("EXCLUSIVE_MODE: grabbed input device '%s' (%s)" % (device_name, path))
+            print("Exclusive mode: grabbed input device '%s' (%s)" % (device_name, path))
         except (IOError, OSError) as error:
             print("WARNING: could not grab '%s' (%s): %s" % (device_name, path, error))
 
-    return {"name": device_name, "path": path, "file": device_file, "grabbed": grabbed}
+    print("Opened input device '%s' (%s)" % (device_name, path))
+    return {"name": device_name, "path": path, "fd": fd, "grabbed": grabbed}
+
+
+def open_output_device():
+    """Open the device unmapped events are resent to in exclusive mode, or return None"""
+    output_device_path = resolve_output_device()
+    if output_device_path is None:
+        return None
+    try:
+        output_device = os.open(output_device_path, os.O_WRONLY)
+    except (IOError, OSError) as error:
+        print("WARNING: could not open output device %s: %s" % (output_device_path, error))
+        return None
+    print("Keys will be resent to: %s" % output_device_path)
+    return output_device
+
+
+def resend_event(output, event):
+    """Resend an unmapped event to the output device, reopening the device once if the write fails"""
+    if output["fd"] is not None:
+        try:
+            os.write(output["fd"], event)
+            return
+        except (IOError, OSError) as error:
+            print("WARNING: could not resend event to the output device, reopening it: %s" % error)
+            try:
+                os.close(output["fd"])
+            except (IOError, OSError):
+                pass
+    output["fd"] = open_output_device()
+    if output["fd"] is None:
+        print("ERROR: no output device, dropping event")
+        return
+    try:
+        os.write(output["fd"], event)
+    except (IOError, OSError) as error:
+        print("ERROR: could not resend event to the output device, dropping it: %s" % error)
 
 
 def input_loop(button_map):
-    # Read from the input device
+    # Read from the input device(s)
     # https://stackoverflow.com/a/16682549/866057
     input_format = "llHHi"
     event_size = struct.calcsize(input_format)
     buttons_waiting = {}
 
-    # The primary device is the Magic Remote over Bluetooth. When Bluetooth is
-    # turned off the remote falls back to IR, and those presses arrive on the
-    # IR receiver device (IR_FALLBACK_DEVICE_NAME) instead -- so we listen to
-    # both. The fallback is only opened if it resolves, and is never grabbed:
-    # unmapped IR keys keep their normal behavior, and mapped IR keys only fire
-    # while Bluetooth is off (see handle_event), so nothing double-fires while
-    # Bluetooth is connected.
-    sources = {}
-    primary = open_source_device(INPUT_DEVICE_NAME, grab=EXCLUSIVE_MODE)
-    if primary is None:
-        print("ERROR: could not find input device, check input_device_name in magic_mapper_config.json")
-        sys.exit(1)
-    primary["fallback"] = False
-    sources[primary["file"].fileno()] = primary
+    # (device name, grab) for every device we read: the remote over bluetooth,
+    # and if ir_input_enabled is true the IR receiver, which gets the remote's
+    # presses while bluetooth is off
+    wanted = [(INPUT_DEVICE_NAME, EXCLUSIVE_MODE)]
+    if IR_INPUT_ENABLED:
+        if not SELECT_AVAILABLE:
+            print("WARNING: the select library isn't available, IR input is disabled")
+        elif IR_INPUT_DEVICE_NAME == INPUT_DEVICE_NAME:
+            print("ir_input_device_name is the same as input_device_name, not reading it twice")
+        else:
+            wanted.append((IR_INPUT_DEVICE_NAME, IR_EXCLUSIVE_MODE))
 
-    if IR_FALLBACK_DEVICE_NAME:
-        fallback = open_source_device(IR_FALLBACK_DEVICE_NAME, grab=False)
-        if fallback:
-            fallback["fallback"] = True
-            sources[fallback["file"].fileno()] = fallback
-            print("IR fallback enabled on '%s' (only acts while Bluetooth is off)" % IR_FALLBACK_DEVICE_NAME)
-
-    if EXCLUSIVE_MODE:
-        print("EXCLUSIVE_MODE is enabled, taking over input device")
-        output_device_path = resolve_output_device()
-        if output_device_path is None:
-            print("ERROR: could not find output device, check output_device_name in magic_mapper_config.json")
-            sys.exit(1)
-        print("Keys will be resent to: %s" % output_device_path)
-        output_device = os.open(output_device_path, os.O_WRONLY)
+    output = {"fd": None}
+    if [name for name, grab in wanted if grab]:
+        print("Exclusive mode is enabled, taking over input device(s)")
+        output["fd"] = open_output_device()
+        if output["fd"] is None:
+            # Carry on without exclusive mode rather than exiting, so the buttons still work
+            print("ERROR: could not find output device, check output_device_name in magic_mapper_config.json. Continuing without exclusive mode")
+            wanted = [(name, False) for name, grab in wanted]
     else:
         print("EXCLUSIVE_MODE is disabled, will not override default button behavior")
-        output_device = None
 
-    device_files = [source["file"] for source in sources.values()]
+    sources = {}  # fd -> source dict from open_source_device()
+    for name, grab in wanted:
+        source = open_source_device(name, grab)
+        if source:
+            sources[source["fd"]] = source
+    if not sources:
+        print("ERROR: could not find input device, check input_device_name in magic_mapper_config.json")
+        sys.exit(1)
+
     first_loop = 2
     while True:
 
@@ -813,16 +852,26 @@ def input_loop(button_map):
             print("Input loop started, waiting for button presses on %d device(s)" % len(sources))
             first_loop = 1
 
-        readable, _, _ = select.select(device_files, [], [])
-        for device_file in readable:
-            source = sources[device_file.fileno()]
-            event = device_file.read(event_size)
+        if SELECT_AVAILABLE:
+            readable = select.select(list(sources), [], [])[0]
+        else:
+            readable = list(sources)  # only one device without select, a blocking read is fine
+
+        for fd in readable:
+            source = sources[fd]
+            try:
+                event = os.read(fd, event_size)
+            except (IOError, OSError) as error:
+                event = None
+                print("WARNING: could not read input device '%s': %s" % (source["name"], error))
             if not event:
-                continue
-            handle_event(event, input_format, source, button_map, buttons_waiting, output_device)
+                # Exit so start_magic_mapper restarts us and reopens the devices
+                print("ERROR: lost input device '%s', exiting" % source["name"])
+                sys.exit(1)
+            handle_event(event, input_format, source, button_map, buttons_waiting, output)
 
 
-def handle_event(event, input_format, source, button_map, buttons_waiting, output_device):
+def handle_event(event, input_format, source, button_map, buttons_waiting, output):
     """Process a single input event read from one of the source devices."""
     (tv_sec, tv_usec, event_type, code, value) = struct.unpack(input_format, event)
 
@@ -866,10 +915,9 @@ def handle_event(event, input_format, source, button_map, buttons_waiting, outpu
 
     if not actions:
         # In exclusive mode we resend unhandled events so others can read them.
-        # Only grabbed devices need this; ungrabbed devices (the IR fallback)
-        # already deliver their events to the OS normally.
+        # Only grabbed devices need this, ungrabbed devices already deliver their events normally.
         if source["grabbed"] and not (BLOCK_MOUSE and code == 1198):
-            os.write(output_device, event)
+            resend_event(output, event)
         if key and value == 1:
             print("Button %s not configured in magic_mapper_config.json (device: %s, code: %s)" % (key, source["name"], code))
         elif value == 1:
@@ -896,11 +944,6 @@ def handle_event(event, input_format, source, button_map, buttons_waiting, outpu
                 luna_send("luna://com.webos.notification/createToast", {"sourceId":"magic mapper","message":"long press for %s is disabled due to magic mapper" % key})
             except Exception:
                 traceback.print_exc()
-        elif source.get("fallback") and bluetooth_is_active(INIT_SYSTEM):
-            # The IR fallback only applies while Bluetooth is off. If Bluetooth
-            # is connected, the Bluetooth device already handled this press, so
-            # ignore the IR copy to avoid firing the action a second time.
-            print("Ignoring IR fallback press for %s because Bluetooth is active" % key)
         else:
             print("%s button up (device: %s)" % (key, source["name"]))
             print("firing event(s) for code: %s button: %s" % (code, key))
@@ -1001,17 +1044,14 @@ def main():
     WEBOS_MAJOR_VERSION = get_webos_version()
     print("WEBOS_MAJOR_VERSION: %s" % WEBOS_MAJOR_VERSION)
 
-    # Cache the init system once so the IR fallback can cheaply check whether
-    # Bluetooth is currently off before acting on an IR keypress.
-    global INIT_SYSTEM
-    INIT_SYSTEM = get_init_system()
-    print("INIT_SYSTEM: %s" % INIT_SYSTEM)
-
     print("Settings:")
     print("  block_mouse: %s" % BLOCK_MOUSE)
     print("  exclusive_mode: %s" % EXCLUSIVE_MODE)
     print("  input_device_name: '%s'%s" % (INPUT_DEVICE_NAME, "" if INPUT_DEVICE_NAME_SET else " (default)"))
     print("  output_device_name: '%s'" % (OUTPUT_DEVICE_NAME if OUTPUT_DEVICE_NAME_SET else "auto"))
+    print("  ir_input_enabled: %s" % IR_INPUT_ENABLED)
+    print("  ir_input_device_name: '%s'" % IR_INPUT_DEVICE_NAME)
+    print("  ir_exclusive_mode: %s" % IR_EXCLUSIVE_MODE)
 
     input_loop(button_map=button_map)
 

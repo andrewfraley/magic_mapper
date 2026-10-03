@@ -1,7 +1,9 @@
 {
   "magic_mapper_settings": {
     "block_mouse": false,
-    "exclusive_mode": true
+    "exclusive_mode": true,
+    "ir_input_enabled": false,
+    "ir_exclusive_mode": true
   },
   "yellow": {
     "function": "cycle_energy_mode",
@@ -81,12 +83,6 @@
     "function": "launch_app",
     "inputs": {
       "app_id": "cdp-30"
-    }
-  },
-  "EXAMPLE - replace this text with an IR-capable button name (ie a number like '8') to toggle bluetooth on/off. IR-capable buttons can also turn bluetooth back ON from the remote via the IR fallback": {
-    "function": "toggle_bluetooth",
-    "inputs": {
-      "notifications": true
     }
   }
 }

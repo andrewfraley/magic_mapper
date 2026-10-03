@@ -114,16 +114,21 @@ Settings live in the `magic_mapper_settings` section at the top of magic_mapper_
 ```
 "magic_mapper_settings": {
   "block_mouse": false,
-  "exclusive_mode": true
+  "exclusive_mode": true,
+  "ir_input_enabled": false,
+  "ir_exclusive_mode": true
 }
 ```
 
 - `block_mouse` (default `false`) - Prevent WebOS from seeing the Magic Remote mouse, see [Disable Mouse](#disable-mouse-experimental). Requires `exclusive_mode`.
-- `exclusive_mode` (default `true`) - Take exclusive control of the remote so mapped buttons don't also trigger their normal behavior. Set to `false` if weird things start happening, but you won't be able to override app buttons or buttons such as "guide".
+- `exclusive_mode` (default `true`) - Take exclusive control of the remote so mapped buttons don't also trigger their normal behavior (this doesn't apply to [IR input](#ir-input), see `ir_exclusive_mode`). Set to `false` if weird things start happening, but you won't be able to override app buttons or buttons such as "guide".
+- `ir_input_enabled` (default `false`) - Also read button presses from the TV's IR receiver, so mapped buttons keep working while bluetooth is off. See [IR input](#ir-input).
+- `ir_exclusive_mode` (default `true`) - Take exclusive control of the IR receiver so mapped buttons pressed over IR don't also trigger their normal behavior. Set to `false` if IR buttons misbehave, mapped buttons will then also do their normal action. Requires `ir_input_enabled`.
 
 These are also supported but normally not needed:
 
-- `input_device_name` (default `"LGE M-RCU - Builtin [0]"`) - The input device to read, the exact `Name=` shown in `/proc/bus/input/devices`. UNTESTED: try `"LGE M-RCU - Builtin [1]"` for IR remotes.
+- `input_device_name` (default `"LGE M-RCU - Builtin [0]"`) - The input device to read, the exact `Name=` shown in `/proc/bus/input/devices`. UNTESTED: for IR remotes try `ir_input_enabled` instead.
+- `ir_input_device_name` (default `"LGE RCU"`) - The IR receiver read when `ir_input_enabled` is true, the exact `Name=` shown in `/proc/bus/input/devices`.
 - `output_device_name` (default: automatic) - The input device that unmapped button presses are resent to in exclusive mode. By default, on webOS 10 and later `"LGE M-RCU - Builtin [1]"` is used (see [Known Issues](#known-issues)); otherwise `"LGE M-RCU - Builtin [2]"` is used if it exists, and if not, another `LGE M-RCU - Builtin` device is picked automatically.
 
 ## Configuring buttons
@@ -514,10 +519,10 @@ To disable the mouse, set `"block_mouse": true` in the [settings](#settings).  T
 
 - Toggles the WebOS bluetooth service (`webos-bluetooth-service`) on or off. If bluetooth is running it is stopped, otherwise it is started.
 - Magic_mapper already runs as root, so it starts/stops the bluetooth service directly (systemd or upstart is detected automatically).
-- Note: disabling bluetooth turns the Magic Remote into an IR-only remote. Only buttons that transmit over IR keep working until bluetooth is turned back on. To toggle bluetooth back **on** from the remote, bind this to a button that sends an IR code (the number buttons `0`-`9` do) and make sure the [IR fallback](#ir-fallback-re-enabling-bluetooth-from-the-remote) is enabled (it is by default). If you bind it to a bluetooth-only button (colored buttons, etc.), you will only be able to turn bluetooth off from the remote and will need to re-enable it another way (SSH `systemctl start webos-bluetooth-service.service`, a reboot, or the webOS Bluetooth Disabler app).
+- Note: disabling bluetooth turns the Magic Remote into an IR-only remote. Only buttons that transmit over IR keep working until bluetooth is turned back on. To toggle bluetooth back **on** from the remote, enable [IR input](#ir-input) and bind this to a button that sends an IR code (the number buttons `0`-`9` do). If you bind it to a button that doesn't send IR, you will only be able to turn bluetooth off from the remote and will need to re-enable it another way: over SSH run `systemctl start webos-bluetooth-service.service` (or `start webos-bluetooth-service` on older TVs such as the C9), reboot the TV, or use the webOS Bluetooth Disabler app.
 - Inputs:
   - `notifications` (bool, default: `false`): show a toast with the new bluetooth state
-- Example (the `8` button is IR-capable, so this can toggle bluetooth both off and back on):
+- Example (the `8` button is IR-capable, so with `ir_input_enabled` set this can toggle bluetooth both off and back on):
   ```
   "8": {
     "function": "toggle_bluetooth",
@@ -527,22 +532,22 @@ To disable the mouse, set `"block_mouse": true` in the [settings](#settings).  T
   }
   ```
 
-### IR fallback (re-enabling bluetooth from the remote)
+## IR input
 
-The Magic Remote normally talks to the TV over bluetooth. When bluetooth is off it falls back to **infrared (IR)**, and those presses arrive on a different input device than the bluetooth one magic_mapper primarily listens to. Without handling this, a button bound to `toggle_bluetooth` could turn bluetooth off but not back on, because the "on" press comes in over IR and magic_mapper never saw it.
-
-magic_mapper handles this by also listening to the IR receiver, configured near the top of `magic_mapper.py`:
+The Magic Remote normally talks to the TV over bluetooth, but when bluetooth is off it falls back to infrared (IR), and those presses arrive on the TV's IR receiver instead of the device Magic Mapper normally reads. Set `"ir_input_enabled": true` in the [settings](#settings) to also read the IR receiver, so mapped buttons keep working over IR (for example a button bound to [toggle_bluetooth](#toggle_bluetooth) can turn bluetooth back on).
 
 ```
-IR_FALLBACK_DEVICE_NAME = 'LGE RCU'   # set to None to disable
+"magic_mapper_settings": {
+  "ir_input_enabled": true
+}
 ```
 
-Behavior and caveats:
-
-- The IR device is **not** grabbed exclusively, and its presses only trigger mappings **while bluetooth is off**. While bluetooth is connected the IR copy is ignored, so buttons that emit both IR and bluetooth (e.g. power/volume) don't fire twice.
-- Because the IR device isn't grabbed, a mapped IR button also performs its **default** action while bluetooth is off (e.g. `8` also enters digit/channel 8). This is usually harmless for a re-enable button.
-- Only buttons that actually emit an IR code can be used while bluetooth is off. The number buttons use the same keycodes over IR and bluetooth, so they work with the existing [Button List](#button-list). Other buttons may emit different IR keycodes or none at all.
-- If your TV names its IR receiver differently (this was developed against a device named `LGE RCU`), run `magic_mapper.py` manually, turn bluetooth off, press some buttons, and check the log lines for the `device:` and `code:` values, then set `IR_FALLBACK_DEVICE_NAME` and/or add codes to the `BUTTONS` map accordingly. Set it to `None` to turn the fallback off entirely.
+- Tested on a C9 (webOS 4) and a C2 (webOS 7).
+- IR presses fire mappings just like bluetooth presses, whether or not bluetooth is on. While bluetooth is connected the Magic Remote doesn't also send IR, so buttons don't fire twice.
+- Mappings also fire from any other IR remote that sends the same codes, such as a universal remote.
+- Like `exclusive_mode`, the IR receiver is taken over so mapped buttons pressed over IR don't also do their normal action, and unmapped buttons are passed on to the TV as usual. If IR buttons misbehave, set `"ir_exclusive_mode": false`, mapped buttons will then also do their normal action (e.g. `8` also enters channel 8).
+- Only buttons that send an IR code work over IR. The numbers, volume, channel up/down, arrows, OK and back send the same codes over IR and bluetooth, so they work with the [Button List](#button-list). Other buttons may send different codes or none at all. To check a button, turn bluetooth off, press it, and look for `device: LGE RCU` and its `code:` in the [logs](#logs).
+- The IR receiver is named `LGE RCU` on the TVs this was tested on. If yours is named differently, set `ir_input_device_name` to the exact `Name=` shown in `/proc/bus/input/devices`.
 
 ## Button List
 
