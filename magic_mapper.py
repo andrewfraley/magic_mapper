@@ -22,7 +22,7 @@ try:
 except ImportError:
     SELECT_AVAILABLE = False
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 # Default settings. Don't edit these here, override them in the "magic_mapper_settings"
 # section of magic_mapper_config.json instead (see the Settings section of the README)
@@ -543,7 +543,7 @@ def apply_settings(settings):
         print("WARNING: ir_exclusive_mode has no effect unless ir_input_enabled is true")
 
 
-def fire_event_one(action):
+def fire_event_one(action, is_repeat=False):
     """Execute the function configured for the button"""
     func_name = action["function"]
     print("func_name: %s" % func_name)
@@ -551,12 +551,17 @@ def fire_event_one(action):
         print("ERROR: function '%s' can't be called from magic_mapper_config.json" % func_name)
         return
     inputs = action.get("inputs", {})
+    # While a button is held, allow a different "increment" via "repeat_increment"
+    # so a single press and an auto-repeat step can move by different amounts.
+    if is_repeat and "repeat_increment" in inputs:
+        inputs = dict(inputs)  # copy so we don't mutate the config's inputs
+        inputs["increment"] = inputs["repeat_increment"]
     globals()[func_name](inputs)
 
-def fire_events(actions):
+def fire_events(actions, is_repeat=False):
     """Execute the function(s) configured for the button"""
     for action in actions:
-        fire_event_one(action)
+        fire_event_one(action, is_repeat)
 
 
 def luna_send(endpoint, payload):
@@ -809,6 +814,7 @@ def input_loop(button_map):
     input_format = "llHHi"
     event_size = struct.calcsize(input_format)
     buttons_waiting = {}
+    repeat_last_fired = {}  # (device, code) -> last fire time while held, for repeat throttling
 
     # (device name, grab) for every device we read: the remote over bluetooth,
     # and if ir_input_enabled is true the IR receiver, which gets the remote's
@@ -868,10 +874,10 @@ def input_loop(button_map):
                 # Exit so start_magic_mapper restarts us and reopens the devices
                 print("ERROR: lost input device '%s', exiting" % source["name"])
                 sys.exit(1)
-            handle_event(event, input_format, source, button_map, buttons_waiting, output)
+            handle_event(event, input_format, source, button_map, buttons_waiting, repeat_last_fired, output)
 
 
-def handle_event(event, input_format, source, button_map, buttons_waiting, output):
+def handle_event(event, input_format, source, button_map, buttons_waiting, repeat_last_fired, output):
     """Process a single input event read from one of the source devices."""
     (tv_sec, tv_usec, event_type, code, value) = struct.unpack(input_format, event)
 
@@ -894,24 +900,27 @@ def handle_event(event, input_format, source, button_map, buttons_waiting, outpu
     if actions:
         if type(actions) is not list:
             actions = [actions]
-        endpoint = "luna://com.webos.applicationManager/getForegroundAppInfo"
-        try:
-            current_app = json.loads(luna_send(endpoint, {})).get('appId')
-        except Exception:
-            print("ERROR: could not get the foreground app, only mappings without an appId will be used")
-            traceback.print_exc()
-        filtered_actions = []
-        found_match = False
-        for action in actions:
-            appId = action.get('appId')
-            if appId is None:
-                filtered_actions += [action]
-            if appId == current_app:
-                filtered_actions += [action]
-                found_match = True
-            if appId == '!' and not found_match:
-                filtered_actions += [action]
-        actions = filtered_actions
+        # Only query the foreground app if some action filters by appId. This
+        # avoids a Luna call on every event, which matters for held/repeated buttons.
+        if any(action.get('appId') for action in actions):
+            endpoint = "luna://com.webos.applicationManager/getForegroundAppInfo"
+            try:
+                current_app = json.loads(luna_send(endpoint, {})).get('appId')
+            except Exception:
+                print("ERROR: could not get the foreground app, only mappings without an appId will be used")
+                traceback.print_exc()
+            filtered_actions = []
+            found_match = False
+            for action in actions:
+                appId = action.get('appId')
+                if appId is None:
+                    filtered_actions += [action]
+                if appId == current_app:
+                    filtered_actions += [action]
+                    found_match = True
+                if appId == '!' and not found_match:
+                    filtered_actions += [action]
+            actions = filtered_actions
 
     if not actions:
         # In exclusive mode we resend unhandled events so others can read them.
@@ -926,16 +935,50 @@ def handle_event(event, input_format, source, button_map, buttons_waiting, outpu
 
     wait_key = (source["name"], code)
 
+    # Determine whether this button's actions should fire on hold/repeat. An
+    # action opts in with "repeat": true. If some but not all actions opt in, we
+    # can't split behavior per event, so treat the whole set as repeat.
+    repeat_flags = [str_to_bool(action.get("repeat", False)) for action in actions]
+    repeat_enabled = any(repeat_flags)
+    if repeat_enabled and not all(repeat_flags):
+        print("WARNING: %s mixes repeat and non-repeat actions; treating all as repeat" % key)
+
+    # Minimum seconds between fires while held. The TV's auto-repeat rate is
+    # fixed, so we throttle the ticks ourselves. 0 (default) fires every tick.
+    repeat_interval = max([float(action.get("repeat_interval", 0)) for action in actions])
+
+    def fire(is_repeat):
+        print("firing event(s) for code: %s button: %s%s" % (code, key, " (repeat)" if is_repeat else ""))
+        # Don't let one failing action kill the script
+        try:
+            fire_events(actions, is_repeat=is_repeat)
+        except Exception:
+            print("ERROR: action for button %s failed" % key)
+            traceback.print_exc()
+
     # Button Down
     if value == 1:
         print("%s button down (device: %s)" % (key, source["name"]))
         if wait_key in buttons_waiting and now - buttons_waiting[wait_key] < 1.0:
             print("WARNING: Got code %s DOWN while waiting for UP" % code)
         buttons_waiting[wait_key] = now
+        if repeat_enabled:
+            # Fire immediately on press; auto-repeat (value == 2) handles the hold.
+            fire(is_repeat=False)
+            repeat_last_fired[wait_key] = now
+
+    # Button Repeat (auto-repeat events emitted while the button is held)
+    elif value == 2:
+        if repeat_enabled and now - repeat_last_fired.get(wait_key, 0) >= repeat_interval:
+            fire(is_repeat=True)
+            repeat_last_fired[wait_key] = now
 
     # Button Up
-    if value == 0:
-        if wait_key not in buttons_waiting:
+    elif value == 0:
+        if repeat_enabled:
+            # Repeat actions already fired on down/repeat; just clear throttle state.
+            repeat_last_fired.pop(wait_key, None)
+        elif wait_key not in buttons_waiting:
             print("WARNING: Got code %s UP with no DOWN" % code)
         elif now - buttons_waiting[wait_key] > 1.0:
             print("Ignoring long press of %s" % key)
@@ -946,13 +989,7 @@ def handle_event(event, input_format, source, button_map, buttons_waiting, outpu
                 traceback.print_exc()
         else:
             print("%s button up (device: %s)" % (key, source["name"]))
-            print("firing event(s) for code: %s button: %s" % (code, key))
-            # Don't let one failing action kill the script
-            try:
-                fire_events(actions)
-            except Exception:
-                print("ERROR: action for button %s failed" % key)
-                traceback.print_exc()
+            fire(is_repeat=False)
         if wait_key in buttons_waiting:
             del buttons_waiting[wait_key]
 
