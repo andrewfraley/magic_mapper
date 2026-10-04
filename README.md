@@ -223,6 +223,39 @@ If you wanted to replace the Amazon Prime button with Plex:
 
 - Now when you press the Prime button, Plex will launch instead.
 
+## Holding a button (repeat)
+
+By default a mapped button fires once when released, and holding it (longer than
+1s) is ignored — you get a toast saying the long press was blocked. To make a
+button repeat its action while held, add `"repeat": true` to its action. It then
+fires once on press and again on each auto-repeat tick while you hold it, with no
+long-press toast.
+
+Optional inputs for a repeating button:
+
+- `repeat_interval` (seconds, default `0`): the minimum time between repeats while
+  held. `0` fires on every auto-repeat tick (fastest); raise it to slow the rate.
+- `repeat_increment`: for actions that take an `increment` (such as
+  `increase_oled_light` / `reduce_oled_light`), use a different — usually smaller —
+  increment while held than on a single press.
+
+Example — tap `ch_up` for a coarse +10 brightness step, or hold it to ramp
+smoothly by 1:
+
+```
+  "ch_up": {
+    "function": "increase_oled_light",
+    "repeat": true,
+    "inputs": {
+      "increment": 10,
+      "repeat_increment": 1
+    }
+  }
+```
+
+If only some actions on a button set `"repeat": true`, the whole button is treated
+as repeating.
+
 ## Logs
 
 start_magic_mapper will redirect output to /tmp/magic_mapper.log
@@ -553,9 +586,9 @@ The Magic Remote normally talks to the TV over bluetooth, but when bluetooth is 
 
 List of known buttons and their codes. Not all remote buttons are on this list, but if needed, you can modify magic_mapper.py to add other button codes. Just run magic_mapper.py manually and it will list all button codes it sees.
 
-Note that long presses (longer than 1s) are ignored. I will eventually add support for different actions based on short vs long press.
+Note that long presses (longer than 1s) on a mapped button are ignored by default (you'll get a toast), unless the button is configured to repeat — see [Holding a button (repeat)](#holding-a-button-repeat).
 
-Note that key repeats are not forwarded for buttons you have mapped, so holding down a mapped button (the direction keys in particular) will not repeat the way it does normally.
+Note that, by default, key repeats are not forwarded for buttons you have mapped, so holding down a mapped button (the direction keys in particular) will not repeat the way it does normally. To opt a button into repeating while held, see [Holding a button (repeat)](#holding-a-button-repeat).
 
 ```
  "red"
