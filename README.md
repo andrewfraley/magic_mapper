@@ -65,6 +65,29 @@ chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 - Edit magic_mapper_config.json as needed
 - Lastly, reboot the TV (execute the reboot command over SSH, or open the homebrew app, click the cog, click the reboot link.)
 
+## Deploying from a cloned repo
+
+If you work from a clone of this repository (instead of `wget`-ing the files
+individually), `deploy_to_tv.sh` copies `magic_mapper.py`, `list_apps.py`,
+`start_magic_mapper` and your config to the TV in one step, verifies every file's
+checksum after transfer, and restarts the service only if all of them match:
+
+```bash
+./deploy_to_tv.sh <tv-host-or-ip>
+```
+
+- The TV only answers SSH while it is **on** (not in standby).
+- Authentication uses your SSH key/agent if available, otherwise it prompts for
+  the root password. Point at a specific key with `-i ~/.ssh/your_key`.
+- By default it deploys `magic_mapper_config.json`. If a (gitignored)
+  `magic_mapper_config-mine.json` exists it deploys that instead, so you can keep
+  a personal config with tokens out of git; override with `-c <file>`.
+- Other options: `-u <user>` (default `root`), `-p <port>` (default `22`). See
+  `./deploy_to_tv.sh --help`.
+
+It works for first-time installs and upgrades alike. Reboot once afterward to
+confirm Magic Mapper auto-starts.
+
 ## Upgrading
 
 Read the upgrade notes below for any changes you need to make, then download the new magic_mapper.py and start_magic_mapper for the version you want (replace v1.1.0 below). Don't download magic_mapper_config.json again, your existing config keeps working.
