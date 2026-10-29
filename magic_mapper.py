@@ -226,16 +226,15 @@ def play_media(inputs):
         "mediaType": inputs.get("media_type", "VIDEO").upper(),
         "deviceType": "DMR",
     }
+    # The media player app differs by webOS version. Verified: photovideo on webOS 4.9 (C9),
+    # mediadiscovery on webOS 7.3 (C2). webOS 5 and 6 are unverified, so the cutoff is a guess.
+    if WEBOS_MAJOR_VERSION < 6:
+        app_id = "com.webos.app.photovideo"
+    else:
+        app_id = "com.webos.app.mediadiscovery"
     endpoint = "luna://com.webos.applicationManager/launch"
-    # webOS 4 (C9) has com.webos.app.photovideo, newer versions may only have mediadiscovery
-    for app_id in ("com.webos.app.photovideo", "com.webos.app.mediadiscovery"):
-        payload = {"id": app_id, "params": {"payload": [item]}}
-        output = luna_send(endpoint, payload)
-        if not isinstance(output, str):
-            output = output.decode("utf-8", "replace")
-        if "not exist" not in output:
-            return
-        print("%s not installed, trying the next media player" % app_id)
+    payload = {"id": app_id, "params": {"payload": [item]}}
+    luna_send(endpoint, payload)
 
 
 def send_ir_command(inputs):
