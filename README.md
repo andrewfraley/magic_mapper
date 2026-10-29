@@ -362,7 +362,8 @@ Killing the python process (even with `kill -9`) will just cause it to be restar
   "4": {
     "function": "play_media",
     "inputs": {
-      "url": "http://192.168.1.50:8000/video.mp4"
+      "url": "http://192.168.1.50:8000/video.mp4",
+      "media_type": "VIDEO"
     }
   }
   ```
