@@ -356,7 +356,7 @@ Killing the python process (even with `kill -9`) will just cause it to be restar
 - Play a video, audio or image URL in the TV's built-in media player (the same player used when you cast to the TV over DLNA)
 - Inputs:
   - **url** (string, default: none): The http(s) URL of the media file or stream
-  - **media_type** (string, default: `VIDEO`): `VIDEO`, `AUDIO` or `IMAGE`
+  - **media_type** (string, default: `VIDEO`): `VIDEO`, `AUDIO` or `IMAGE` (not case sensitive)
 - Example:
   ```
   "4": {
