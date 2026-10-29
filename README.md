@@ -18,6 +18,7 @@ The script has support to do the the following (default config button):
 - [Turn the screen off](#screen_off) - press any button but power to turn it back on (9 button)
 - [Toggle the Eye Comfort Mode](#toggle_eye_comfort) (also known as Reduce Blue Light) (blue button)
 - [Launch an app](#launch_app) (not configured by default)
+- [Play a media URL](#play_media) in the TV's media player (not configured by default)
 - [Send IR commands](#send_ir_command) to a device configured by the Device Connector (ie have a shortcut key to toggle power on for an optical connected soundbar)
 - [Curl a URL](#curl) (ie call a HomeAssistant webhook trigger URL with a payload)
 - [Simulate a button press](#press_button) (useful to send play and pause commands on remotes without these buttons, ie use "green" for play and "red" for pause)
@@ -55,10 +56,10 @@ The script has support to do the the following (default config button):
 
 ```
 cd /home/root
-wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.1.0/magic_mapper.py
-wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.1.0/magic_mapper_config.json
+wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.2.0/magic_mapper.py
+wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.2.0/magic_mapper_config.json
 cd /var/lib/webosbrew/init.d
-wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.1.0/start_magic_mapper
+wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.2.0/start_magic_mapper
 chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 ```
 
@@ -67,12 +68,12 @@ chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 
 ## Upgrading
 
-Read the upgrade notes below for any changes you need to make, then download the new magic_mapper.py and start_magic_mapper for the version you want (replace v1.1.0 below). Don't download magic_mapper_config.json again, your existing config keeps working.
+Read the upgrade notes below for any changes you need to make, then download the new magic_mapper.py and start_magic_mapper for the version you want (replace v1.2.0 below). Don't download magic_mapper_config.json again, your existing config keeps working.
 
 ```
 /var/lib/webosbrew/init.d/start_magic_mapper stop
-wget -O /home/root/magic_mapper.py https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.1.0/magic_mapper.py
-wget -O /var/lib/webosbrew/init.d/start_magic_mapper https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.1.0/start_magic_mapper
+wget -O /home/root/magic_mapper.py https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.2.0/magic_mapper.py
+wget -O /var/lib/webosbrew/init.d/start_magic_mapper https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.2.0/start_magic_mapper
 chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 /var/lib/webosbrew/init.d/start_magic_mapper start
 ```
@@ -205,7 +206,7 @@ Use this to completely disable a button. Note this will not work if `"exclusive_
 If you wanted to replace the Amazon Prime button with Plex:
 
 - Get the Plex app id by copying the included list_apps.py script to the TV.
-  - `wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.1.0/list_apps.py`
+  - `wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.2.0/list_apps.py`
   - Run it with:
     - (C9/CX): `python list_apps.py`
     - (C1/C2+): `python3 list_apps.py`
@@ -346,6 +347,23 @@ Killing the python process (even with `kill -9`) will just cause it to be restar
     "function": "launch_app",
     "inputs": {
       "app_id": "netflix"
+    }
+  }
+  ```
+
+### play_media
+
+- Play a video, audio or image URL in the TV's built-in media player (the same player used when you cast to the TV over DLNA)
+- Inputs:
+  - **url** (string, default: none): The http(s) URL of the media file or stream
+  - **media_type** (string, default: `VIDEO`): `VIDEO`, `AUDIO` or `IMAGE` (not case sensitive)
+- Example:
+  ```
+  "4": {
+    "function": "play_media",
+    "inputs": {
+      "url": "http://192.168.1.50:8000/video.mp4",
+      "media_type": "VIDEO"
     }
   }
   ```

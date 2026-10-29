@@ -22,7 +22,7 @@ try:
 except ImportError:
     SELECT_AVAILABLE = False
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 # Default settings. Don't edit these here, override them in the "magic_mapper_settings"
 # section of magic_mapper_config.json instead (see the Settings section of the README)
@@ -105,7 +105,6 @@ MOUSE_WHEEL = {
 }
 
 EVIOCGRAB = 1074021776  # Don't mess with this
-
 
 def cycle_energy_mode(inputs):
     """cycle energy modes between min med max off"""
@@ -206,6 +205,35 @@ def launch_app(inputs):
     params = inputs.get("params")
     if params:
         payload["params"] = params
+    luna_send(endpoint, payload)
+
+
+def play_media(inputs):
+    """Play a media URL in the TV's built-in media player
+    This launches the same player the TV uses when something is cast to it over DLNA.
+    Inputs:
+        url - http(s) URL of the media file or stream
+        media_type (optional, default "VIDEO") - VIDEO, AUDIO or IMAGE
+    """
+    url = inputs.get("url")
+    if not url:
+        print("ERROR: play_media function called but url not supplied")
+        return
+
+    # The player won't start playback unless deviceType is DMR (the DLNA renderer)
+    item = {
+        "fullPath": url,
+        "mediaType": inputs.get("media_type", "VIDEO").upper(),
+        "deviceType": "DMR",
+    }
+    # The media player app differs by webOS version. Verified: photovideo on webOS 4.9 (C9),
+    # mediadiscovery on webOS 7.3 (C2). webOS 5 and 6 are unverified, so the cutoff is a guess.
+    if WEBOS_MAJOR_VERSION < 6:
+        app_id = "com.webos.app.photovideo"
+    else:
+        app_id = "com.webos.app.mediadiscovery"
+    endpoint = "luna://com.webos.applicationManager/launch"
+    payload = {"id": app_id, "params": {"payload": [item]}}
     luna_send(endpoint, payload)
 
 
@@ -456,6 +484,7 @@ CONFIG_FUNCTIONS = (
     "reduce_oled_light",
     "set_oled_backlight",
     "launch_app",
+    "play_media",
     "send_ir_command",
     "curl",
     "press_button",
