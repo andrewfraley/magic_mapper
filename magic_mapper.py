@@ -22,7 +22,7 @@ try:
 except ImportError:
     SELECT_AVAILABLE = False
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 
 # Default settings. Don't edit these here, override them in the "magic_mapper_settings"
 # section of magic_mapper_config.json instead (see the Settings section of the README)
@@ -468,6 +468,29 @@ def toggle_bluetooth(inputs):
     if inputs.get("notifications"):
         show_message("Bluetooth: %s" % new_state)
 
+
+def show_display_info(inputs):
+    """Show a toast with the current input or app, its video resolution and refresh rate,
+    and whether HDR is on
+    Inputs: None
+    """
+    app_manager = "luna://com.webos.service.applicationmanager"
+    app_id = luna_query(app_manager + "/getForegroundAppInfo", {}).get("appId", "")
+    title = luna_query(app_manager + "/getAppInfo", {"id": app_id}).get("appInfo", {}).get("title", app_id)
+
+    message = get_video_mode(app_id)
+    if message:
+        picture_settings = luna_query("luna://com.webos.settingsservice/getSystemSettings", {"category": "picture"})
+        dynamic_range = picture_settings.get("dimension", {}).get("dynamicRange")
+        if dynamic_range:
+            message = "%s, %s" % (message, dynamic_range_label(dynamic_range))
+    else:
+        message = "No video"
+
+    if title:
+        message = "%s: %s" % (title, message)
+    show_message(message)
+
 ###################################
 # Private Functions
 # The fuctions below here should not be called by magic_mapper_config.json
@@ -494,6 +517,7 @@ CONFIG_FUNCTIONS = (
     "send_tcp_command",
     "toggle_piccap",
     "toggle_bluetooth",
+    "show_display_info",
 )
 
 
@@ -616,6 +640,50 @@ def luna_send(endpoint, payload):
     print("running command: %s" % command)
     output = subprocess.check_output(command)
     return output
+
+
+def luna_query(endpoint, payload):
+    """Call a luna getter and return the parsed response, or {} if there wasn't a usable one"""
+    try:
+        return json.loads(luna_send(endpoint, payload))
+    except (ValueError, TypeError, subprocess.CalledProcessError) as error:
+        print("WARNING: no usable response from %s: %s" % (endpoint, error))
+        return {}
+
+
+def get_video_mode(app_id):
+    """Return the current video's resolution and refresh rate as a string, or None if there's no video
+    getDisplayInfo covers both inputs and apps, and reports frameRate in tenths of a Hz (239 is 23.9 Hz).
+    Newer TVs such as the C2 (webOS 7) don't have that service, they have videooutput instead.
+    getHDMIInfo only covers HDMI, and reports whole Hz. It's the fallback in case getDisplayInfo isn't usable.
+    """
+    display_service = "luna://com.webos.service.tv.display"
+    info = luna_query(display_service + "/getDisplayInfo", {"sinkType": "MAIN"})
+    if info.get("width") and info.get("height"):
+        return "%sx%s @ %g Hz" % (info["width"], info["height"], info.get("frameRate", 0) / 10.0)
+
+    for video in luna_query("luna://com.webos.service.videooutput/getStatus", {}).get("video", []):
+        if video.get("sink") == "MAIN" and video.get("width") and video.get("height"):
+            return "%sx%s @ %s Hz" % (video["width"], video["height"], video.get("frameRate"))
+
+    if "hdmi" in app_id:
+        info = luna_query(display_service + "/getHDMIInfo", {})
+        if info.get("width") and info.get("height"):
+            return "%sx%s @ %s Hz" % (info["width"], info["height"], info.get("frameRate"))
+
+    return None
+
+
+def dynamic_range_label(dynamic_range):
+    """Turn a dynamicRange picture setting (ie sdrALLM, hdr, dolbyHdr) into a label for display"""
+    value = dynamic_range.lower()
+    if "dolby" in value:
+        return "HDR (Dolby Vision)"
+    if "hdr" in value:
+        return "HDR"
+    if "sdr" in value:
+        return "SDR"
+    return dynamic_range
 
 
 def increment_oled_light(inputs, direction):

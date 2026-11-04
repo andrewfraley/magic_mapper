@@ -29,6 +29,7 @@ The script has support to do the the following (default config button):
 - [Send a TCP command](#send_tcp_command) (not configured by default)
 - [Toggle PicCap](#toggle_piccap) (not configured by default)
 - [Toggle Bluetooth](#toggle_bluetooth) on/off (not configured by default)
+- [Show display info](#show_display_info) - resolution, refresh rate and HDR status (not configured by default)
 
 ## TV Models supported (Likely any LG TV after 2018 are supported until this stops working with unknown future models)
 
@@ -56,10 +57,10 @@ The script has support to do the the following (default config button):
 
 ```
 cd /home/root
-wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.2.0/magic_mapper.py
-wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.2.0/magic_mapper_config.json
+wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.3.0/magic_mapper.py
+wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.3.0/magic_mapper_config.json
 cd /var/lib/webosbrew/init.d
-wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.2.0/start_magic_mapper
+wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.3.0/start_magic_mapper
 chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 ```
 
@@ -68,12 +69,12 @@ chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 
 ## Upgrading
 
-Read the upgrade notes below for any changes you need to make, then download the new magic_mapper.py and start_magic_mapper for the version you want (replace v1.2.0 below). Don't download magic_mapper_config.json again, your existing config keeps working.
+Read the upgrade notes below for any changes you need to make, then download the new magic_mapper.py and start_magic_mapper for the version you want (replace v1.3.0 below). Don't download magic_mapper_config.json again, your existing config keeps working.
 
 ```
 /var/lib/webosbrew/init.d/start_magic_mapper stop
-wget -O /home/root/magic_mapper.py https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.2.0/magic_mapper.py
-wget -O /var/lib/webosbrew/init.d/start_magic_mapper https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.2.0/start_magic_mapper
+wget -O /home/root/magic_mapper.py https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.3.0/magic_mapper.py
+wget -O /var/lib/webosbrew/init.d/start_magic_mapper https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.3.0/start_magic_mapper
 chmod +x /var/lib/webosbrew/init.d/start_magic_mapper
 /var/lib/webosbrew/init.d/start_magic_mapper start
 ```
@@ -206,7 +207,7 @@ Use this to completely disable a button. Note this will not work if `"exclusive_
 If you wanted to replace the Amazon Prime button with Plex:
 
 - Get the Plex app id by copying the included list_apps.py script to the TV.
-  - `wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.2.0/list_apps.py`
+  - `wget https://raw.githubusercontent.com/andrewfraley/magic_mapper/v1.3.0/list_apps.py`
   - Run it with:
     - (C9/CX): `python list_apps.py`
     - (C1/C2+): `python3 list_apps.py`
@@ -547,6 +548,17 @@ To disable the mouse, set `"block_mouse": true` in the [settings](#settings).  T
     "inputs": {
       "notifications": true
     }
+  }
+  ```
+
+### show_display_info
+
+- Shows a toast with the current input or app, its video resolution and refresh rate, and whether HDR is on, without leaving what you're watching. For example `HDMI4: 2560x1440 @ 119 Hz, SDR` or `Netflix: 3840x2160 @ 23.9 Hz, HDR (Dolby Vision)`. It shows `No video` if nothing is playing, such as in an app's menus.
+- Inputs: None
+- Example:
+  ```
+  "0": {
+    "function": "show_display_info"
   }
   ```
 
