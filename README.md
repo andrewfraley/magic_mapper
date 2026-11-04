@@ -39,6 +39,7 @@ The script has support to do the the following (default config button):
 - LG C2 (webOS 7) - Fully tested
 - LG C4 (webOS 10) - Tested by a contributor on webOS 10.3.1
 - LG C5 (webOS 10) - Used by a contributor, buttons from the C5 remote are supported
+- LG C6H (webOS 11) - Reported working by a user on Magic Mapper 1.2.0, software version 11.1.0-4401
 
 ## Known Issues
 
