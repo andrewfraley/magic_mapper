@@ -553,7 +553,7 @@ To disable the mouse, set `"block_mouse": true` in the [settings](#settings).  T
 
 ### show_display_info
 
-- Shows a toast with the current input or app, its video resolution and refresh rate, and whether HDR is on, without leaving what you're watching. For example `HDMI4: 2560x1440 @ 119 Hz, SDR` or `Netflix: 3840x2160 @ 23.9 Hz, HDR (Dolby Vision)`. It shows `No video` if nothing is playing, such as in an app's menus.
+- Shows a toast with the current input or app, its video resolution and refresh rate, and whether HDR is on, without leaving what you're watching. For example `HDMI4: 2560x1440 @ 119 Hz, SDR` or `Netflix: 3840x2160 @ 23.9 Hz, HDR (Dolby Vision)`. It shows `No video info` if the TV doesn't report any, such as in an app's menus.
 - Inputs: None
 - Example:
   ```

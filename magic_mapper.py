@@ -475,17 +475,18 @@ def show_display_info(inputs):
     Inputs: None
     """
     app_manager = "luna://com.webos.service.applicationmanager"
-    app_id = luna_query(app_manager + "/getForegroundAppInfo", {}).get("appId", "")
-    title = luna_query(app_manager + "/getAppInfo", {"id": app_id}).get("appInfo", {}).get("title", app_id)
+    app_id = luna_query(app_manager + "/getForegroundAppInfo", {}).get("appId") or ""
+    app_info = luna_query(app_manager + "/getAppInfo", {"id": app_id}).get("appInfo") or {}
+    title = app_info.get("title") or app_id
 
-    message = get_video_mode(app_id)
+    message = get_video_mode()
     if message:
         picture_settings = luna_query("luna://com.webos.settingsservice/getSystemSettings", {"category": "picture"})
-        dynamic_range = picture_settings.get("dimension", {}).get("dynamicRange")
+        dynamic_range = (picture_settings.get("dimension") or {}).get("dynamicRange")
         if dynamic_range:
             message = "%s, %s" % (message, dynamic_range_label(dynamic_range))
     else:
-        message = "No video"
+        message = "No video info"
 
     if title:
         message = "%s: %s" % (title, message)
@@ -651,27 +652,38 @@ def luna_query(endpoint, payload):
         return {}
 
 
-def get_video_mode(app_id):
-    """Return the current video's resolution and refresh rate as a string, or None if there's no video
-    getDisplayInfo covers both inputs and apps, and reports frameRate in tenths of a Hz (239 is 23.9 Hz).
-    Newer TVs such as the C2 (webOS 7) don't have that service, they have videooutput instead.
-    getHDMIInfo only covers HDMI, and reports whole Hz. It's the fallback in case getDisplayInfo isn't usable.
+def get_video_mode():
+    """Return the current video's resolution and refresh rate as a string, or None if there isn't any
+    The C9 (webOS 4) has getDisplayInfo, which covers inputs and apps. The C2 (webOS 7) doesn't have
+    that service, it has videooutput instead. webOS 5 and 6 are unverified, so below 7 both are tried.
     """
-    display_service = "luna://com.webos.service.tv.display"
-    info = luna_query(display_service + "/getDisplayInfo", {"sinkType": "MAIN"})
-    if info.get("width") and info.get("height"):
-        return "%sx%s @ %g Hz" % (info["width"], info["height"], info.get("frameRate", 0) / 10.0)
-
-    for video in luna_query("luna://com.webos.service.videooutput/getStatus", {}).get("video", []):
-        if video.get("sink") == "MAIN" and video.get("width") and video.get("height"):
-            return "%sx%s @ %s Hz" % (video["width"], video["height"], video.get("frameRate"))
-
-    if "hdmi" in app_id:
-        info = luna_query(display_service + "/getHDMIInfo", {})
+    if WEBOS_MAJOR_VERSION < 7:
+        info = luna_query("luna://com.webos.service.tv.display/getDisplayInfo", {"sinkType": "MAIN"})
         if info.get("width") and info.get("height"):
-            return "%sx%s @ %s Hz" % (info["width"], info["height"], info.get("frameRate"))
+            return format_video_mode(info["width"], info["height"], info.get("frameRate"))
+
+    for video in luna_query("luna://com.webos.service.videooutput/getStatus", {}).get("video") or []:
+        if video.get("sink") == "MAIN" and video.get("width") and video.get("height"):
+            return format_video_mode(video["width"], video["height"], video.get("frameRate"))
 
     return None
+
+
+def format_video_mode(width, height, frame_rate):
+    """Format a resolution and refresh rate, leaving out the rate if it isn't usable
+    The C9 reports frameRate in tenths of a Hz (239 is 23.9 Hz), the C2 reports it in Hz. Units on other
+    TVs are unverified. In tenths a real rate is at least 230, and in Hz no TV reaches 200, so size tells them apart.
+    """
+    mode = "%sx%s" % (width, height)
+    try:
+        rate = float(frame_rate)
+    except (TypeError, ValueError):
+        return mode
+    if rate <= 0:
+        return mode
+    if rate >= 200:
+        rate = rate / 10.0
+    return "%s @ %g Hz" % (mode, rate)
 
 
 def dynamic_range_label(dynamic_range):
